@@ -16,7 +16,8 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; 
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
@@ -27,7 +28,15 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter(req, file, cb) {
-  if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+  // Some clients (notably Postman on Windows with non-ASCII filenames)
+  // fail to detect the mimetype correctly and send a generic
+  // 'application/octet-stream'. Fall back to checking the file
+  // extension so legitimate images aren't rejected.
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mimetypeOk = ALLOWED_MIME_TYPES.has(file.mimetype);
+  const extensionOk = ALLOWED_EXTENSIONS.has(ext);
+
+  if (!mimetypeOk && !extensionOk) {
     return cb(new Error('Unsupported file type. Only JPEG, PNG, or WEBP images are allowed.'));
   }
   cb(null, true);
