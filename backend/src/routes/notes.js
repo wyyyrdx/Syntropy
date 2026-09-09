@@ -1,5 +1,5 @@
 const express = require('express');
-const upload = require('../middleware/upload');
+const { upload } = require('../middleware/upload');
 const { uploadNote, getStatus } = require('../controllers/notesController');
 
 const router = express.Router();
