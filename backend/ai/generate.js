@@ -1,39 +1,45 @@
+const fetch = require('node-fetch');
+const path = require('path');
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000/generate';
+const AI_REQUEST_TIMEOUT_MS = 60_000;
+
 /**
- * HTTP client for the AI Engineer's FastAPI concept-graph service.
+ * @param {string} localImagePath - the path as stored by our own multer upload
+ *   (e.g. ./uploads/169999-abc.jpg). We only need the filename; the AI service
+ *   reads it from its own mount of the same shared volume.
  */
+async function generateConceptGraph(localImagePath) {
+  const filename = path.basename(localImagePath);
+  const containerImagePath = `/app/uploads/${filename}`;
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-const AI_SERVICE_TIMEOUT_MS = Number(process.env.AI_SERVICE_TIMEOUT_MS || 60000);
-
-async function generateConceptGraph(imagePath) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AI_SERVICE_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
 
   let response;
   try {
-    response = await fetch(`${AI_SERVICE_URL}/generate`, {
+    response = await fetch(AI_SERVICE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_path: imagePath }),
-      signal: controller.signal
+      body: JSON.stringify({ image_path: containerImagePath }),
+      signal: controller.signal,
     });
   } catch (err) {
     if (err.name === 'AbortError') {
-      throw new Error('AI service timed out');
+      throw new Error('AI service timed out after 60s.');
     }
     throw new Error(`Could not reach AI service: ${err.message}`);
   } finally {
     clearTimeout(timeout);
   }
 
-  const payload = await response.json().catch(() => null);
+  const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const message = payload && payload.error ? payload.error : `AI service returned ${response.status}`;
-    throw new Error(message);
+    throw new Error(body.detail || body.error || `AI service error (${response.status})`);
   }
 
-  return payload; 
+  return body; 
 }
 
 module.exports = { generateConceptGraph };
