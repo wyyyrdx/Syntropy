@@ -5,7 +5,7 @@ router.get('/', (req, res) => {
   res.json({
     status: 'ok',
     message: 'Syntropy backend is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 

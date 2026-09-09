@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const path = require('path');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000/generate';
@@ -36,6 +35,7 @@ async function generateConceptGraph(localImagePath) {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    // his FastAPI HTTPException returns { detail: "..." }; handle { error: "..." } too just in case
     throw new Error(body.detail || body.error || `AI service error (${response.status})`);
   }
 
