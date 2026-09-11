@@ -1,0 +1,134 @@
+{
+  "subject_title": "Organic Chemistry: Alkenes Preparation and Chemical Properties",
+  "raw_transcription": "-> From Alcohols -> Acid catalyzed dehydration -> Alcohols on heating with conc. H2SO4 form Alkenes with the elimination one water molecule. Since a water molecule is eliminated from the Alcohol molecule in the presence of an acid this reaction is known as acidic dehydration of Alcohols -> This is also an example of beta-elimination reaction CH3 CH2 OH -- conc. H2SO4 --> CH2=CH2 + H2O Chemical properties -> They undergo addition reaction 1) Addition of H2 H2C=CH2 + H2 -- Ni --> H3C-CH3 ethene ethane 2) Addition of Halogen H2C=CH2 + Br2 -- CCl4 --> BrCH2-CH2Br ethene The reddish-orange colour of Bromine solution in CCl4 is discharged when Bromine adds up to an unsaturated site. Therefore this test is used as a test for unsaturation (presence of double or triple bond) in a organic compound. Q) Suggest a chemical test to distinguish between Ethane and Ethene 3) Addition of HX (hydrohalogenation) H2C=CH2 + HBr ---> CH3-CH2Br",
+  "nodes": [
+    {
+      "node_id": "acidic_dehydration_of_alcohols",
+      "title": "Acidic Dehydration of Alcohols",
+      "explanation": "Heating alcohols with concentrated H2SO4 eliminates a water molecule to form alkenes.",
+      "importance": "primary",
+      "suggested_cluster": "Preparation of Alkenes"
+    },
+    {
+      "node_id": "beta_elimination",
+      "title": "Beta-Elimination Reaction",
+      "explanation": "A reaction mechanism where atoms or groups are removed from adjacent carbon atoms (alpha and beta) to form a multiple bond.",
+      "importance": "secondary",
+      "suggested_cluster": "Reaction Mechanisms"
+    },
+    {
+      "node_id": "addition_reactions_of_alkenes",
+      "title": "Addition Reactions of Alkenes",
+      "explanation": "Chemical reactions characteristic of unsaturated alkenes where atoms add across the double bond.",
+      "importance": "primary",
+      "suggested_cluster": "Chemical Properties of Alkenes"
+    },
+    {
+      "node_id": "hydrogenation",
+      "title": "Addition of Hydrogen (Hydrogenation)",
+      "explanation": "Addition of H2 across an alkene double bond in the presence of a Nickel catalyst to produce an alkane.",
+      "importance": "secondary",
+      "suggested_cluster": "Chemical Properties of Alkenes"
+    },
+    {
+      "node_id": "halogenation",
+      "title": "Addition of Halogen (Halogenation)",
+      "explanation": "Addition of Br2 in CCl4 to an alkene to produce a vicinal dibromide.",
+      "importance": "secondary",
+      "suggested_cluster": "Chemical Properties of Alkenes"
+    },
+    {
+      "node_id": "test_for_unsaturation",
+      "title": "Test for Unsaturation",
+      "explanation": "Discharge of the reddish-orange color of bromine solution in CCl4 upon addition to double or triple bonds.",
+      "importance": "tertiary",
+      "suggested_cluster": "Chemical Tests"
+    },
+    {
+      "node_id": "hydrohalogenation",
+      "title": "Addition of HX (Hydrohalogenation)",
+      "explanation": "Addition of hydrogen halide (e.g., HBr) across an alkene double bond to yield a haloalkane.",
+      "importance": "secondary",
+      "suggested_cluster": "Chemical Properties of Alkenes"
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "acidic_dehydration_of_alcohols",
+      "target_id": "beta_elimination",
+      "relationship_type": "is an example of"
+    },
+    {
+      "source_id": "addition_reactions_of_alkenes",
+      "target_id": "hydrogenation",
+      "relationship_type": "includes"
+    },
+    {
+      "source_id": "addition_reactions_of_alkenes",
+      "target_id": "halogenation",
+      "relationship_type": "includes"
+    },
+    {
+      "source_id": "halogenation",
+      "target_id": "test_for_unsaturation",
+      "relationship_type": "serves as"
+    },
+    {
+      "source_id": "addition_reactions_of_alkenes",
+      "target_id": "hydrohalogenation",
+      "relationship_type": "includes"
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "q1",
+      "linked_node_id": "test_for_unsaturation",
+      "question_text": "What visual observation indicates a positive test for unsaturation when using bromine in CCl4?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Formation of a white precipitate"
+        },
+        {
+          "id": "B",
+          "text": "Discharge of the reddish-orange color of bromine solution"
+        },
+        {
+          "id": "C",
+          "text": "Evolution of a pungent gas"
+        },
+        {
+          "id": "D",
+          "text": "Color change from clear to deep blue"
+        }
+      ],
+      "correct_option_id": "B",
+      "explanation": "When bromine adds across a double or triple bond (unsaturated site), the reddish-orange color of the bromine solution in CCl4 is discharged."
+    },
+    {
+      "question_id": "q2",
+      "linked_node_id": "acidic_dehydration_of_alcohols",
+      "question_text": "Which reagent and condition are used to convert ethanol to ethene via dehydration?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Concentrated H2SO4 with heating"
+        },
+        {
+          "id": "B",
+          "text": "Nickel catalyst at room temperature"
+        },
+        {
+          "id": "C",
+          "text": "Bromine in CCl4"
+        },
+        {
+          "id": "D",
+          "text": "Dilute HCl with cooling"
+        }
+      ],
+      "correct_option_id": "A",
+      "explanation": "Heating alcohols with concentrated H2SO4 causes elimination of a water molecule to yield an alkene."
+    }
+  ]
+}
