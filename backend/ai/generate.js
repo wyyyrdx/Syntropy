@@ -1,16 +1,18 @@
 const path = require('path');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://ai-service:8000/generate';
+
+const AI_UPLOADS_PATH_PREFIX = process.env.AI_UPLOADS_PATH_PREFIX || '/app/uploads';
 const AI_REQUEST_TIMEOUT_MS = 60_000;
 
 /**
  * @param {string} localImagePath - the path as stored by our own multer upload
  *   (e.g. ./uploads/169999-abc.jpg). We only need the filename; the AI service
- *   reads it from its own mount of the same shared volume.
+ *   resolves it against AI_UPLOADS_PATH_PREFIX on its own side.
  */
 async function generateConceptGraph(localImagePath) {
   const filename = path.basename(localImagePath);
-  const containerImagePath = `/app/uploads/${filename}`;
+  const containerImagePath = `${AI_UPLOADS_PATH_PREFIX}/${filename}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
@@ -39,7 +41,7 @@ async function generateConceptGraph(localImagePath) {
     throw new Error(body.detail || body.error || `AI service error (${response.status})`);
   }
 
-  return body; 
+  return body;
 }
 
 module.exports = { generateConceptGraph };

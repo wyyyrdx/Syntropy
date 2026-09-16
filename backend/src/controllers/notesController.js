@@ -7,8 +7,7 @@ async function uploadNote(req, res) {
     return res.status(400).json({ error: "No image file provided (field name: 'image')." });
   }
 
-  // TODO: replace with real authenticated user id once auth is wired up
-  const userId = req.body.user_id || 'anonymous';
+  const userId = req.user.id;
   const sessionId = uuidv4();
 
   db.prepare(
@@ -21,6 +20,7 @@ async function uploadNote(req, res) {
 
   res.status(202).json({ session_id: sessionId, status: 'pending' });
 
+  // Fire the AI job in the background
   processNoteAsync(sessionId, req.file.path).catch((err) => {
     console.error(`[notesController] Background processing failed for session ${sessionId}:`, err);
   });
@@ -31,6 +31,11 @@ function getStatus(req, res) {
 
   const session = db.prepare(`SELECT * FROM sessions WHERE id = ?`).get(sessionId);
   if (!session) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+
+  // A user can only check the status of their own sessions
+  if (session.user_id !== req.user.id) {
     return res.status(404).json({ error: 'Session not found.' });
   }
 
@@ -46,6 +51,7 @@ function getStatus(req, res) {
     return res.status(200).json({ session_id: session.id, status: session.status });
   }
 
+  //assemble the stored concept graph
   const note = db.prepare(`SELECT * FROM notes WHERE session_id = ?`).get(sessionId);
   const nodes = db
     .prepare(`SELECT node_id, title, explanation, importance, suggested_cluster FROM concepts WHERE session_id = ?`)
@@ -78,6 +84,7 @@ function getStatus(req, res) {
   });
 }
 
+// --- Background job: call AI service, store result, update session status ---
 async function processNoteAsync(sessionId, imagePath) {
   db.prepare(`UPDATE sessions SET status = 'processing', updated_at = datetime('now') WHERE id = ?`).run(sessionId);
 
