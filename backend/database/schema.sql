@@ -1,8 +1,15 @@
 -- Database Schema (SQLite)
 
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   id            TEXT PRIMARY KEY,        
-  user_id       TEXT NOT NULL,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status        TEXT NOT NULL DEFAULT 'pending', 
   error_message TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
