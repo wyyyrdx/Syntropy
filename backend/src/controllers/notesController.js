@@ -18,6 +18,10 @@ async function uploadNote(req, res) {
     `INSERT INTO notes (id, session_id, image_path) VALUES (?, ?, ?)`
   ).run(uuidv4(), sessionId, req.file.path);
 
+  db.prepare(
+    `INSERT INTO session_members (session_id, user_id, role) VALUES (?, ?, 'owner')`
+  ).run(sessionId, userId);
+
   res.status(202).json({ session_id: sessionId, status: 'pending' });
 
   // Fire the AI job in the background

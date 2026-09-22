@@ -7,7 +7,14 @@ const routes = require('./routes');
 
 const app = express();
 
-app.use(cors());
+// CORS_ORIGIN can be a comma-separated list of allowed origins
+// (e.g. "http://localhost:5173,https://app.syntropy.dev").
+// Left unset, CORS stays fully open - fine for local development.
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : '*';
+
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -53,3 +53,11 @@ CREATE TABLE IF NOT EXISTS questions (
   explanation       TEXT,
   PRIMARY KEY (session_id, question_id)
 );
+
+CREATE TABLE IF NOT EXISTS session_members (
+  session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL DEFAULT 'member',   -- 'owner' | 'member'
+  joined_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (session_id, user_id)
+);
