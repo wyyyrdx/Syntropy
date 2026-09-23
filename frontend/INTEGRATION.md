@@ -25,3 +25,26 @@ The standalone module stores progress in `syntropy_physics_stats`, while Geograp
 ## Standalone development
 
 Run `npm run dev` in `frontend`, then open `/physics.html`. The original `/` entry remains unchanged for Geography.
+
+# Biology Module Integration
+
+## Subject-specific files
+
+- `src/BiologyApp.jsx`
+- `src/main-biology.jsx`
+- `src/components/BiologyCell.jsx`
+- `src/components/PhotosynthesisPlant.jsx`
+- `src/components/BiologyWorld.jsx`
+- `src/components/BiologyBookSelector.jsx`
+- `src/data/biologyRealms.js`
+- `src/data/biologyCurriculumBooks.js`
+- `src/game/biologyTileEngine.js`
+- `biology.html`
+
+## Themes
+
+Nine 2D realms cover plants (photosynthesis, transport, reproduction), animals (habitats, adaptation, classification), and the human body (circulation, digestion/breathing, skeleton/nerves).
+
+## Standalone development
+
+Open `/biology.html`. Progress is stored in `syntropy_biology_stats`.
