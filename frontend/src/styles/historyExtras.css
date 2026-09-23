@@ -1,0 +1,19 @@
+/* historyExtras.css
+   Import this ALONGSIDE your existing global stylesheet (the one with
+   .btn-pixel, .pixel-box, .quiz-option-btn, .chapter-item-btn,
+   .waypoint-card, .crt-overlay, and the Press Start 2P / VT323 fonts).
+   Nothing here duplicates those — it only adds the era-portal card look. */
+
+.era-portal-card {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  background: #0d1322;
+}
+
+.era-portal-card:hover {
+  transform: translateY(-2px);
+}
+
+.era-portal-card:active {
+  transform: translateY(1px);
+}
