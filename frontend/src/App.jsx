@@ -6,6 +6,7 @@ import QuizModal from './components/QuizModal';
 import { GEOGRAPHY_REALMS } from './data/geographyRealms';
 import { retroAudio } from './audio/retroAudio';
 import { Globe2, Map, BookOpen, Volume2, VolumeX, Tv, Award, Sparkles } from 'lucide-react';
+import SubjectSwitcher from './components/SubjectSwitcher';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('globe'); // 'globe' | 'realm' | 'books'
@@ -113,9 +114,7 @@ export default function App() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-pixel text-xs sm:text-sm text-cyan-300 tracking-wider">SYNTROPY</h1>
-                <span className="font-pixel text-[8px] sm:text-[9px] px-1 py-0.5 bg-amber-500/20 border border-amber-400 text-amber-300 rounded">
-                  GEO
-                </span>
+                <SubjectSwitcher active="geo" />
               </div>
               <p className="font-mono text-[9px] text-slate-400 hidden xs:block">PIXEL GEOGRAPHY</p>
             </div>

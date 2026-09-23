@@ -25,3 +25,52 @@ The standalone module stores progress in `syntropy_physics_stats`, while Geograp
 ## Standalone development
 
 Run `npm run dev` in `frontend`, then open `/physics.html`. The original `/` entry remains unchanged for Geography.
+
+# Biology Module Integration
+
+## Subject-specific files
+
+- `src/BiologyApp.jsx`
+- `src/main-biology.jsx`
+- `src/components/BiologyCell.jsx`
+- `src/components/PhotosynthesisPlant.jsx`
+- `src/components/AnimalFoodWeb.jsx`
+- `src/components/HumanBodySystems.jsx`
+- `src/components/BiologyWorld.jsx`
+- `src/components/BiologyBookSelector.jsx`
+- `src/data/biologyRealms.js`
+- `src/data/biologyCurriculumBooks.js`
+- `src/game/biologyTileEngine.js`
+- `biology.html`
+
+## Themes
+
+Nine 2D realms cover plants, animals, and the human body. The PLANT, ANIMAL, and BODY tabs show 2D process art (photosynthesis, food web, body systems). A GEO / PHY / BIO / HIS switcher links the standalone apps.
+
+## Standalone development
+
+Open `/biology.html`. Progress is stored in `syntropy_biology_stats`.
+
+# History Module Integration
+
+## Subject-specific files
+
+- `src/HistoryApp.jsx`
+- `src/main-history.jsx`
+- `src/components/EraPortalGrid.jsx`
+- `src/components/HistoryRealm.jsx`
+- `src/components/HistoryBookSelector.jsx`
+- `src/data/historyBooksData.js`
+- `src/data/historyEras.js`
+- `src/data/historyRealms.js`
+- `src/game/historyTileEngine.js`
+- `src/styles/historyExtras.css`
+- `history.html`
+
+## Themes
+
+The TIMELINE tab is the era hub. REALM walks the 2D history maps. BOOKS loads Class 6–10 curriculum data. GEO / PHY / BIO / HIS switches subjects.
+
+## Standalone development
+
+Open `/history.html`. Progress is stored in `syntropy_history_stats`.

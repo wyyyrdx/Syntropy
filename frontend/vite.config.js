@@ -3,11 +3,18 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    postcss: {
+      plugins: []
+    }
+  },
   build: {
     rollupOptions: {
       input: {
         main: 'index.html',
-        physics: 'physics.html'
+        physics: 'physics.html',
+        biology: 'biology.html',
+        history: 'history.html'
       }
     }
   },

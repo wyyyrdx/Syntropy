@@ -2,15 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import EraPortalGrid from './components/EraPortalGrid';
 import HistoryRealm from './components/HistoryRealm';
 import HistoryBookSelector from './components/HistoryBookSelector';
-import QuizModal from './components/QuizModal'; // reused verbatim from Geography — copy unchanged
+import SubjectSwitcher from './components/SubjectSwitcher';
+import QuizModal from './components/QuizModal';
 import { HISTORY_REALMS } from './data/historyRealms';
-import { retroAudio } from './audio/retroAudio'; // reused verbatim from Geography — copy unchanged
+import { retroAudio } from './audio/retroAudio';
 import { Clock, Map, BookOpen, Volume2, VolumeX, Tv, Award, Sparkles } from 'lucide-react';
 
-const STATS_STORAGE_KEY = 'syntropy_history_stats'; // separate from Geography's 'syntropy_player_stats'
+const STATS_STORAGE_KEY = 'syntropy_history_stats';
 
-export default function App() {
-  const [currentView, setCurrentView] = useState('timeline'); // 'timeline' | 'realm' | 'books'
+export default function HistoryApp() {
+  const [currentView, setCurrentView] = useState('timeline');
   const [selectedRealm, setSelectedRealm] = useState(HISTORY_REALMS[0]);
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -103,7 +104,6 @@ export default function App() {
 
   return (
     <div className={`min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden w-full max-w-full ${crtEnabled ? 'crt-overlay' : ''}`}>
-      {/* Top bar */}
       <header className="sticky top-0 z-40 bg-slate-950/95 border-b-2 border-slate-800 backdrop-blur px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-2">
@@ -113,9 +113,7 @@ export default function App() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-pixel text-sm sm:text-sm text-amber-300 tracking-wider">SYNTROPY</h1>
-                <span className="font-pixel text-[8px] sm:text-[9px] px-1 py-0.5 bg-rose-500/20 border border-rose-400 text-rose-300 rounded">
-                  HISTORY
-                </span>
+                <SubjectSwitcher active="his" />
               </div>
               <p className="font-mono text-[9px] text-slate-400 hidden xs:block">PIXEL HISTORY</p>
             </div>
