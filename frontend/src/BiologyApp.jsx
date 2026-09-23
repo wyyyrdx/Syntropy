@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Award, BookOpen, Leaf, Map, Sparkles, Sun, Tv, Volume2, VolumeX } from 'lucide-react';
+import { Award, BookOpen, Heart, Leaf, Map, Sparkles, Sun, Tv, Volume2, VolumeX } from 'lucide-react';
 import BiologyCell from './components/BiologyCell';
 import BiologyWorld from './components/BiologyWorld';
 import BiologyBookSelector from './components/BiologyBookSelector';
 import PhotosynthesisPlant from './components/PhotosynthesisPlant';
+import AnimalFoodWeb from './components/AnimalFoodWeb';
+import HumanBodySystems from './components/HumanBodySystems';
+import SubjectSwitcher from './components/SubjectSwitcher';
 import QuizModal from './components/QuizModal';
 import { BIOLOGY_REALMS } from './data/biologyRealms';
 import { retroAudio } from './audio/retroAudio';
@@ -88,7 +91,7 @@ export default function BiologyApp() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-pixel text-xs sm:text-sm text-emerald-300">SYNTROPY</h1>
-                <span className="font-pixel text-[8px] px-1 py-0.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded">BIO</span>
+                <SubjectSwitcher active="bio" />
               </div>
               <p className="font-mono text-[9px] text-slate-400">PIXEL BIOLOGY</p>
             </div>
@@ -112,10 +115,16 @@ export default function BiologyApp() {
           </div>
         </div>
         <nav className="flex items-center gap-1 bg-slate-900/90 p-1 border-2 border-slate-800 rounded w-full sm:w-auto">
-          <button onClick={() => nav('plant')} className={`btn-pixel flex-1 text-[9px] py-1.5 px-2.5 flex items-center justify-center gap-1.5 ${currentView === 'plant' ? 'btn-pixel-green' : 'bg-transparent border-transparent'}`}>
+          <button onClick={() => nav('plant')} className={`btn-pixel flex-1 text-[8px] py-1.5 px-2 flex items-center justify-center gap-1 ${currentView === 'plant' ? 'btn-pixel-green' : 'bg-transparent border-transparent'}`}>
             <Sun className="w-3.5 h-3.5" /> PLANT
           </button>
-          <button onClick={() => nav('cell')} className={`btn-pixel flex-1 text-[9px] py-1.5 px-2.5 flex items-center justify-center gap-1.5 ${currentView === 'cell' ? 'btn-pixel-primary' : 'bg-transparent border-transparent'}`}>
+          <button onClick={() => nav('animal')} className={`btn-pixel flex-1 text-[8px] py-1.5 px-2 flex items-center justify-center gap-1 ${currentView === 'animal' ? 'btn-pixel-amber' : 'bg-transparent border-transparent'}`}>
+            <Map className="w-3.5 h-3.5" /> ANIMAL
+          </button>
+          <button onClick={() => nav('body')} className={`btn-pixel flex-1 text-[8px] py-1.5 px-2 flex items-center justify-center gap-1 ${currentView === 'body' ? 'btn-pixel-amber' : 'bg-transparent border-transparent'}`}>
+            <Heart className="w-3.5 h-3.5" /> BODY
+          </button>
+          <button onClick={() => nav('cell')} className={`btn-pixel flex-1 text-[8px] py-1.5 px-2 flex items-center justify-center gap-1 ${currentView === 'cell' ? 'btn-pixel-primary' : 'bg-transparent border-transparent'}`}>
             <Leaf className="w-3.5 h-3.5" /> CELL
           </button>
           <button onClick={() => nav('realm')} className={`btn-pixel flex-1 text-[9px] py-1.5 px-2.5 flex items-center justify-center gap-1.5 ${currentView === 'realm' ? 'btn-pixel-primary' : 'bg-transparent border-transparent'}`}>
@@ -128,6 +137,8 @@ export default function BiologyApp() {
       </header>
       <main className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 w-full overflow-x-hidden">
         {currentView === 'plant' && <PhotosynthesisPlant onOpenQuiz={setActiveQuiz} onPlayRealm={selectRealm} />}
+        {currentView === 'animal' && <AnimalFoodWeb onOpenQuiz={setActiveQuiz} onPlayRealm={selectRealm} />}
+        {currentView === 'body' && <HumanBodySystems onOpenQuiz={setActiveQuiz} onPlayRealm={selectRealm} />}
         {currentView === 'cell' && <BiologyCell onSelectRealm={selectRealm} activeRealmId={selectedRealm.id} />}
         {currentView === 'realm' && (
           <BiologyWorld

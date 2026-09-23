@@ -34,6 +34,8 @@ Run `npm run dev` in `frontend`, then open `/physics.html`. The original `/` ent
 - `src/main-biology.jsx`
 - `src/components/BiologyCell.jsx`
 - `src/components/PhotosynthesisPlant.jsx`
+- `src/components/AnimalFoodWeb.jsx`
+- `src/components/HumanBodySystems.jsx`
 - `src/components/BiologyWorld.jsx`
 - `src/components/BiologyBookSelector.jsx`
 - `src/data/biologyRealms.js`
@@ -43,7 +45,7 @@ Run `npm run dev` in `frontend`, then open `/physics.html`. The original `/` ent
 
 ## Themes
 
-Nine 2D realms cover plants (photosynthesis, transport, reproduction), animals (habitats, adaptation, classification), and the human body (circulation, digestion/breathing, skeleton/nerves).
+Nine 2D realms cover plants, animals, and the human body. The PLANT, ANIMAL, and BODY tabs show 2D process art (photosynthesis, food web, body systems). A GEO / PHY / BIO switcher links the three standalone apps.
 
 ## Standalone development
 
