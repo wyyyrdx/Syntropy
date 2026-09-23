@@ -45,8 +45,30 @@ Run `npm run dev` in `frontend`, then open `/physics.html`. The original `/` ent
 
 ## Themes
 
-Nine 2D realms cover plants, animals, and the human body. The PLANT, ANIMAL, and BODY tabs show 2D process art (photosynthesis, food web, body systems). A GEO / PHY / BIO switcher links the three standalone apps.
+Nine 2D realms cover plants, animals, and the human body. The PLANT, ANIMAL, and BODY tabs show 2D process art (photosynthesis, food web, body systems). A GEO / PHY / BIO / HIS switcher links the standalone apps.
 
 ## Standalone development
 
 Open `/biology.html`. Progress is stored in `syntropy_biology_stats`.
+
+# History Module Integration
+
+## Subject-specific files
+
+- `src/HistoryApp.jsx`
+- `src/main-history.jsx`
+- `src/components/HistoryTimeline.jsx`
+- `src/components/HistoryWorld.jsx`
+- `src/components/HistoryBookSelector.jsx`
+- `src/data/history/historyBooks.js`
+- `src/data/history/historyRealm.js`
+- `src/game/historyTileEngine.js`
+- `history.html`
+
+## Themes
+
+Ten time realms follow the Class 6–10 book `realmTarget` ids (Bhimbetka through Berlin). The ERAS tab is the hub; BOOKS loads the existing history curriculum data.
+
+## Standalone development
+
+Open `/history.html`. Progress is stored in `syntropy_history_stats`.

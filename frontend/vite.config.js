@@ -13,7 +13,8 @@ export default defineConfig({
       input: {
         main: 'index.html',
         physics: 'physics.html',
-        biology: 'biology.html'
+        biology: 'biology.html',
+        history: 'history.html'
       }
     }
   },

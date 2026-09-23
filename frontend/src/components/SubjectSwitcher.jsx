@@ -3,7 +3,8 @@ import React from 'react';
 const SUBJECTS = [
   { id: 'geo', href: '/', label: 'GEO' },
   { id: 'phy', href: '/physics.html', label: 'PHY' },
-  { id: 'bio', href: '/biology.html', label: 'BIO' }
+  { id: 'bio', href: '/biology.html', label: 'BIO' },
+  { id: 'his', href: '/history.html', label: 'HIS' }
 ];
 
 export default function SubjectSwitcher({ active }) {
