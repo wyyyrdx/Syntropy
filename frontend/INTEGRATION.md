@@ -57,17 +57,19 @@ Open `/biology.html`. Progress is stored in `syntropy_biology_stats`.
 
 - `src/HistoryApp.jsx`
 - `src/main-history.jsx`
-- `src/components/HistoryTimeline.jsx`
-- `src/components/HistoryWorld.jsx`
+- `src/components/EraPortalGrid.jsx`
+- `src/components/HistoryRealm.jsx`
 - `src/components/HistoryBookSelector.jsx`
-- `src/data/history/historyBooks.js`
-- `src/data/history/historyRealm.js`
+- `src/data/historyBooksData.js`
+- `src/data/historyEras.js`
+- `src/data/historyRealms.js`
 - `src/game/historyTileEngine.js`
+- `src/styles/historyExtras.css`
 - `history.html`
 
 ## Themes
 
-Ten time realms follow the Class 6–10 book `realmTarget` ids (Bhimbetka through Berlin). The ERAS tab is the hub; BOOKS loads the existing history curriculum data.
+The TIMELINE tab is the era hub. REALM walks the 2D history maps. BOOKS loads Class 6–10 curriculum data. GEO / PHY / BIO / HIS switches subjects.
 
 ## Standalone development
 
