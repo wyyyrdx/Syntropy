@@ -143,6 +143,7 @@ export default function HistoryWorld({ realm, onBackToHub, onOpenQuiz, playerSta
           if (nearby.type === 'landmark') {
             setActiveDialogue({
               type: 'landmark',
+              id: nearby.data.id,
               name: nearby.data.name,
               category: nearby.data.category,
               icon: nearby.data.icon,
@@ -416,8 +417,17 @@ export default function HistoryWorld({ realm, onBackToHub, onOpenQuiz, playerSta
         {/* Floating Dialogue Box (Retro RPG Box) */}
         {activeDialogue && (
           <div
-            style={{ backgroundColor: '#070d1a' }}
-            className="absolute inset-x-2 bottom-2 sm:bottom-4 sm:inset-x-4 border-3 border-amber-400 p-3 sm:p-4 shadow-2xl z-30 max-w-2xl mx-auto backdrop-blur animate-fadeIn max-h-[80%] overflow-y-auto"
+            className="border-3 border-amber-400 p-3 z-30 max-w-2xl"
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              bottom: 12,
+              margin: '0 auto',
+              backgroundColor: '#070d1a',
+              maxHeight: '70%',
+              overflowY: 'auto'
+            }}
           >
             {activeDialogue.type === 'npc' ? (
               <div className="flex items-start gap-3 sm:gap-4">
@@ -542,6 +552,7 @@ export default function HistoryWorld({ realm, onBackToHub, onOpenQuiz, playerSta
                 if (nearby.type === 'landmark') {
                   setActiveDialogue({
                     type: 'landmark',
+                    id: nearby.data.id,
                     name: nearby.data.name,
                     category: nearby.data.category,
                     icon: nearby.data.icon,

@@ -46,31 +46,31 @@ export function generateRealmTilemap(realm) {
 }
 
 export function drawTile(ctx, type, x, y, tick = 0) {
-  const colors = palette[type] || palette.plant_floor;
+  const colors = palette[type] || palette.stone_floor;
   ctx.save();
   ctx.translate(x, y);
   ctx.fillStyle = colors[0];
   ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
   if (type === 'thicket') {
-    ctx.fillStyle = '#052e16';
+    ctx.fillStyle = '#292524';
     ctx.fillRect(2, 2, 28, 28);
-    ctx.fillStyle = '#166534';
-    ctx.fillRect(6, 8, 8, 14);
-    ctx.fillRect(16, 6, 10, 16);
-    ctx.fillStyle = tick % 40 < 20 ? '#4ade80' : '#f59e0b';
-    ctx.fillRect(9, 10, 3, 3);
-    ctx.fillRect(19, 12, 3, 3);
+    ctx.fillStyle = '#57534e';
+    ctx.fillRect(6, 6, 8, 20);
+    ctx.fillRect(18, 8, 8, 18);
+    ctx.fillStyle = tick % 40 < 20 ? '#fbbf24' : '#a8a29e';
+    ctx.fillRect(8, 8, 4, 4);
+    ctx.fillRect(20, 12, 4, 4);
   } else if (type === 'life_path') {
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#1c1917';
     ctx.fillRect(0, 0, 32, 32);
-    ctx.fillStyle = '#334155';
+    ctx.fillStyle = '#78716c';
     ctx.fillRect(0, 13, 32, 6);
-    ctx.fillStyle = tick % 30 < 15 ? '#4ade80' : '#22c55e';
+    ctx.fillStyle = tick % 30 < 15 ? '#fbbf24' : '#d97706';
     ctx.fillRect(0, 15, 32, 2);
   } else if (type === 'landmark_pad') {
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#1c1917';
     ctx.fillRect(0, 0, 32, 32);
-    ctx.strokeStyle = '#86efac';
+    ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 2;
     ctx.strokeRect(3, 3, 26, 26);
   } else {
@@ -92,11 +92,11 @@ export function drawPlayerSprite(ctx, x, y, direction, moving, tick) {
   ctx.translate(x, y + bob);
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(10, 5, 12, 9);
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#f59e0b';
   ctx.fillRect(direction === 'left' ? 9 : 13, 8, 5, 3);
-  ctx.fillStyle = '#14532d';
+  ctx.fillStyle = '#78350f';
   ctx.fillRect(8, 14, 16, 12);
-  ctx.fillStyle = '#86efac';
+  ctx.fillStyle = '#fbbf24';
   ctx.fillRect(5, 16, 3, 8);
   ctx.fillRect(24, 16, 3, 8);
   ctx.fillStyle = '#64748b';
@@ -106,7 +106,7 @@ export function drawPlayerSprite(ctx, x, y, direction, moving, tick) {
 }
 
 export function generateRealmFauna(realm) {
-  const icons = ['leaf', 'bug', 'spore', 'pulse'];
+  const icons = ['scroll', 'coin', 'torch', 'map'];
   return Array.from({ length: 4 }, (_, index) => ({
     id: `${realm.id}-${index}`,
     x: 5 + index * 5,
@@ -129,7 +129,7 @@ export function drawAmbientAnimal(ctx, item, tick) {
   const pos = faunaWorldPos(item, tick);
   ctx.save();
   ctx.translate(pos.px, pos.py);
-  const color = item.icon === 'bug' ? '#f59e0b' : item.icon === 'pulse' ? '#fb7185' : '#4ade80';
+  const color = item.icon === 'torch' ? '#f59e0b' : item.icon === 'coin' ? '#fbbf24' : '#a8a29e';
   ctx.fillStyle = color;
   ctx.fillRect(10, 10, 10, 8);
   ctx.fillStyle = '#f8fafc';
@@ -140,9 +140,9 @@ export function drawAmbientAnimal(ctx, item, tick) {
 export function drawInteractionIndicator(ctx, x, y, label, tick) {
   const lift = Math.sin(tick * 0.08) * 3;
   ctx.save();
-  ctx.fillStyle = '#86efac';
+  ctx.fillStyle = '#fbbf24';
   ctx.fillRect(x + 7, y - 17 + lift, 18, 16);
-  ctx.fillStyle = '#052e16';
+  ctx.fillStyle = '#1c1917';
   ctx.font = '10px "Press Start 2P", monospace';
   ctx.textAlign = 'center';
   ctx.fillText(label, x + 16, y - 5 + lift);
