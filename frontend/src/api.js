@@ -76,5 +76,58 @@ export const api = {
       throw new Error(err.error || 'Failed to fetch note status');
     }
     return await res.json();
+  },
+
+  // Ingestion: Upload file (PNG, JPG, PDF, WEBP)
+  uploadDocument: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
+    }
+    return await res.json();
+  },
+
+  // Ingestion: Trigger AI Generation (explanation | graph | world)
+  generateKnowledge: async (documentId, mode = 'graph') => {
+    const res = await fetch(`${API_BASE}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: documentId, mode })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Generation failed');
+    }
+    return await res.json();
+  },
+
+  // Ingestion: Get Generation Job Status & Results
+  getGenerationJob: async (jobId) => {
+    const res = await fetch(`${API_BASE}/generation/${jobId}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to fetch generation job');
+    }
+    return await res.json();
+  },
+
+  // Ingestion: Get Document Details
+  getDocument: async (documentId) => {
+    const res = await fetch(`${API_BASE}/document/${documentId}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to fetch document');
+    }
+    return await res.json();
   }
 };
+

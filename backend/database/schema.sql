@@ -61,3 +61,33 @@ CREATE TABLE IF NOT EXISTS session_members (
   joined_at   TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (session_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS documents (
+  id            TEXT PRIMARY KEY,
+  filename      TEXT NOT NULL,
+  file_type     TEXT NOT NULL,
+  file_size     INTEGER NOT NULL,
+  file_path     TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'ready',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS generation_jobs (
+  id            TEXT PRIMARY KEY,
+  document_id   TEXT NOT NULL,
+  mode          TEXT NOT NULL, -- 'explanation' | 'graph' | 'world'
+  status        TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'processing' | 'completed' | 'failed'
+  error         TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS generation_results (
+  id            TEXT PRIMARY KEY,
+  job_id        TEXT NOT NULL REFERENCES generation_jobs(id) ON DELETE CASCADE,
+  document_id   TEXT NOT NULL,
+  mode          TEXT NOT NULL,
+  result_json   TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+

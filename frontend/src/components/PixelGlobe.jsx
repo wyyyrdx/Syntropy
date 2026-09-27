@@ -683,25 +683,41 @@ export default function PixelGlobe({ onSelectRealm, activeRealmId }) {
       </div>
 
       {/* Available Geographical Waypoints Bar */}
-      <div className="w-full max-w-5xl mt-3 sm:mt-4">
-        <div className="font-pixel text-[9px] sm:text-[10px] text-slate-400 mb-2 flex items-center gap-2 px-1">
-          <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>AVAILABLE GEOGRAPHICAL WAYPOINTS ({GEOGRAPHY_REALMS.length}):</span>
+      <div className="w-full max-w-5xl mt-4 sm:mt-5">
+        <div className="font-pixel text-[10px] sm:text-[11px] text-slate-300 mb-2.5 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="tracking-wider">AVAILABLE GEOGRAPHICAL WAYPOINTS ({GEOGRAPHY_REALMS.length}):</span>
+          </div>
+          <span className="font-mono text-xs text-slate-400 hidden sm:inline">SELECT TO WARP GLOBE</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {GEOGRAPHY_REALMS.map(realm => {
             const isActive = activeRealmId === realm.id;
             return (
               <button
                 key={realm.id}
                 onClick={() => handleQuickWarp(realm)}
-                className={`waypoint-card ${isActive ? 'active' : ''}`}
+                className={`p-3.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[88px] ${
+                  isActive
+                    ? 'bg-amber-950/40 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-400/50'
+                    : 'bg-[#090f1d]/90 border-[#19263e] hover:border-cyan-400/60 hover:bg-[#0d162a] hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xl">{realm.npc.avatar}</span>
-                  <span className="font-mono text-[9px] text-cyan-400 uppercase">{realm.region}</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span className="font-mono text-[11px] text-cyan-300/90 tracking-wider font-semibold uppercase px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+                      {realm.region}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="font-mono text-[10px] text-amber-300 font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 animate-pulse">
+                      ACTIVE
+                    </span>
+                  )}
                 </div>
-                <div className="font-pixel text-[8px] text-slate-100 line-clamp-2 leading-tight">
+                <div className="font-mono text-sm font-bold text-slate-100 group-hover:text-cyan-200 transition-colors leading-snug">
                   {realm.name}
                 </div>
               </button>

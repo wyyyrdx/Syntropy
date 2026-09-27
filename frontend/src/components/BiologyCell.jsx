@@ -314,7 +314,7 @@ export default function BiologyCell({ onSelectRealm, activeRealmId }) {
         <div className="font-pixel text-[9px] sm:text-[10px] text-slate-400 mb-2 px-1">
           ORGANELLE GATES ({BIOLOGY_REALMS.length})
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {ORGANELLES.map((item) => {
             const realm = BIOLOGY_REALMS.find((entry) => entry.id === item.realmId);
             const isActive = activeRealmId === realm.id;
@@ -322,13 +322,26 @@ export default function BiologyCell({ onSelectRealm, activeRealmId }) {
               <button
                 key={item.realmId}
                 onClick={() => startWarp(realm)}
-                className={`waypoint-card ${isActive ? 'active' : ''}`}
+                className={`p-3.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[88px] ${
+                  isActive
+                    ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/50'
+                    : 'bg-[#090f1d]/90 border-[#19263e] hover:border-cyan-400/60 hover:bg-[#0d162a] hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xl">{realm.npc.avatar}</span>
-                  <span className="font-mono text-[9px] text-emerald-400 uppercase">{item.short}</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span className="font-mono text-[11px] text-cyan-300/90 tracking-wider font-semibold uppercase px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+                      {item.short}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="font-mono text-[10px] text-cyan-300 font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/50 animate-pulse">
+                      ACTIVE
+                    </span>
+                  )}
                 </div>
-                <div className="font-pixel text-[8px] text-slate-100 line-clamp-2 leading-tight">
+                <div className="font-mono text-sm font-bold text-slate-100 group-hover:text-cyan-200 transition-colors leading-snug">
                   {realm.name}
                 </div>
               </button>

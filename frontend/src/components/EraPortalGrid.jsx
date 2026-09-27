@@ -76,20 +76,33 @@ export default function EraPortalGrid({ onSelectRealm, activeRealmId }) {
           <span style={{ color: selectedEra.themeColor }}>●</span>
           <span>{selectedEra.label.toUpperCase()} WAYPOINTS ({realmsInEra.length}):</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {realmsInEra.map((realm) => {
             const isActive = activeRealmId === realm.id;
             return (
               <button
                 key={realm.id}
                 onClick={() => handleEnterRealm(realm)}
-                className={`waypoint-card ${isActive ? 'active' : ''}`}
+                className={`p-3.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[88px] ${
+                  isActive
+                    ? 'bg-amber-950/40 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-400/50'
+                    : 'bg-[#090f1d]/90 border-[#19263e] hover:border-amber-400/60 hover:bg-[#0d162a] hover:shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xl">{realm.npc.avatar}</span>
-                  <span className="font-mono text-[9px] text-cyan-400 uppercase">{realm.period}</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span className="font-mono text-[11px] text-amber-300/90 tracking-wider font-semibold uppercase px-2 py-0.5 rounded bg-amber-950/60 border border-amber-500/30">
+                      {realm.period}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="font-mono text-[10px] text-amber-300 font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 animate-pulse">
+                      ACTIVE
+                    </span>
+                  )}
                 </div>
-                <div className="font-pixel text-[8px] text-slate-100 line-clamp-2 leading-tight">
+                <div className="font-mono text-sm font-bold text-slate-100 group-hover:text-amber-200 transition-colors leading-snug">
                   {realm.name}
                 </div>
               </button>
