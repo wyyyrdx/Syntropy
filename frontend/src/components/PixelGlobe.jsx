@@ -676,32 +676,53 @@ export default function PixelGlobe({ onSelectRealm, activeRealmId }) {
 
       </div>
 
-      {/* Subtle Hint Bar Underneath Canvas */}
-      <div className="mt-2 text-center text-[9px] sm:text-[10px] font-mono text-cyan-400/90 bg-slate-900/90 px-3 py-1.5 border border-cyan-500/30 rounded flex items-center justify-center gap-1.5 max-w-sm">
-        <span className="text-amber-400 font-pixel text-[8px] animate-pulse">●</span>
-        <span>DRAG TO ROLL GLOBE • CLICK TO EXPLORE</span>
-      </div>
-
       {/* Available Geographical Waypoints Bar */}
-      <div className="w-full max-w-5xl mt-3 sm:mt-4">
-        <div className="font-pixel text-[9px] sm:text-[10px] text-slate-400 mb-2 flex items-center gap-2 px-1">
-          <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>AVAILABLE GEOGRAPHICAL WAYPOINTS ({GEOGRAPHY_REALMS.length}):</span>
+      <div className="w-full max-w-5xl mt-4 sm:mt-5">
+        <div className="font-pixel text-[10px] sm:text-[11px] text-slate-300 mb-2.5 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="tracking-wider">AVAILABLE GEOGRAPHICAL WAYPOINTS ({GEOGRAPHY_REALMS.length}):</span>
+          </div>
+          <span className="font-mono text-xs text-slate-400 hidden sm:inline">SELECT TO WARP GLOBE</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          {GEOGRAPHY_REALMS.map(realm => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {GEOGRAPHY_REALMS.map((realm) => {
             const isActive = activeRealmId === realm.id;
             return (
               <button
                 key={realm.id}
-                onClick={() => handleQuickWarp(realm)}
-                className={`waypoint-card ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  retroAudio.playInteract();
+                  handleQuickWarp(realm);
+                }}
+                className={`btn-pixel-card p-3 sm:p-3.5 min-h-[84px] group ${
+                  isActive ? 'btn-pixel-card-active' : ''
+                }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xl">{realm.npc.avatar}</span>
-                  <span className="font-mono text-[9px] text-cyan-400 uppercase">{realm.region}</span>
+                <div className="flex items-center justify-between gap-2 mb-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span
+                      className={`text-[9px] font-pixel tracking-wider uppercase px-2 py-0.5 border ${
+                        isActive
+                          ? 'bg-amber-950/80 border-amber-300 text-amber-200'
+                          : 'bg-slate-900/90 border-slate-600 text-slate-300'
+                      }`}
+                    >
+                      {realm.region}
+                    </span>
+                  </div>
+                  {isActive && (
+                    <span className="text-[9px] font-pixel text-amber-200 font-bold uppercase px-2 py-0.5 border border-amber-300 bg-amber-950 shadow-[1px_1px_0px_#000] animate-pulse">
+                      ACTIVE
+                    </span>
+                  )}
                 </div>
-                <div className="font-pixel text-[8px] text-slate-100 line-clamp-2 leading-tight">
+                <div
+                  className={`font-pixel text-[10px] sm:text-[11px] leading-snug tracking-wide uppercase ${
+                    isActive ? 'text-white' : 'text-slate-100 group-hover:text-amber-200'
+                  }`}
+                >
                   {realm.name}
                 </div>
               </button>

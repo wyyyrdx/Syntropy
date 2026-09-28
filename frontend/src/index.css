@@ -355,6 +355,63 @@ canvas, img, .pixel-art {
   border-color: #fde68a;
 }
 
+/* Retro Arcade Waypoint Button (Interactive 16-bit Gate/Waypoint) */
+.btn-pixel-card {
+  font-family: var(--font-pixel);
+  background: #1e293b;
+  color: #f8fafc;
+  border: 2px solid #475569;
+  box-shadow: 3px 3px 0px #090e17;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.1s ease;
+  user-select: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.btn-pixel-card:hover {
+  background: #2b394e;
+  border-color: #64748b;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #090e17;
+}
+
+.btn-pixel-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #090e17;
+}
+
+.btn-pixel-card-active {
+  background: #d97706 !important;
+  border-color: #fbbf24 !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0px #78350f !important;
+}
+
+.btn-pixel-card-active:hover {
+  background: #f59e0b !important;
+  border-color: #fde68a !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #78350f !important;
+}
+
+.btn-pixel-card-active:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #78350f !important;
+}
+
+.btn-pixel-card-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px);
+  opacity: 0.6;
+}
+
 /* Arcade Beveled Box */
 .pixel-box {
   background: #0d1322;
@@ -501,3 +558,498 @@ canvas, img, .pixel-art {
 ::-webkit-scrollbar-track { background: #070a12; }
 ::-webkit-scrollbar-thumb { background: #1e293b; border: 1px solid #070a12; }
 ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+/* =========================================================
+   KNOWLEDGE INGESTION TERMINAL & DASHBOARD STYLES
+   ========================================================= */
+
+.dashboard-layout {
+  font-family: var(--font-ui);
+  background-color: #060911;
+  color: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-panel {
+  background: #080d1a;
+  border: 1px solid #17243c;
+  border-radius: 8px;
+  position: relative;
+}
+
+.hud-corner-box {
+  position: relative;
+  background: #080d19;
+  border: 1px solid #1a2942;
+  transition: all 0.2s ease;
+}
+
+.hud-corner-box:hover {
+  border-color: #06b6d4;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.12);
+}
+
+.hud-corner-box::before,
+.hud-corner-box::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+
+.hud-corner-box::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid #06b6d4;
+  border-left: 2px solid #06b6d4;
+}
+
+.hud-corner-box::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid #06b6d4;
+  border-right: 2px solid #06b6d4;
+}
+
+.hud-corner-tr {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #06b6d4;
+  border-right: 2px solid #06b6d4;
+  pointer-events: none;
+}
+
+.hud-corner-bl {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid #06b6d4;
+  border-left: 2px solid #06b6d4;
+  pointer-events: none;
+}
+
+/* Generation Target Selectable Cards */
+.gen-target-card {
+  background: #090e1c;
+  border: 1.5px solid #1e293b;
+  border-radius: 6px;
+  padding: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+}
+
+.gen-target-card:hover {
+  background: #0e172e;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.gen-target-card.selected {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: #00f0ff;
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.08);
+}
+
+/* Cyan Action Button */
+.btn-analyse-generate {
+  background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
+  color: #04101e;
+  font-family: var(--font-ui);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-analyse-generate:hover:not(:disabled) {
+  background: linear-gradient(135deg, #38bdf8 0%, #00f0ff 100%);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
+  transform: translateY(-1px);
+  color: #000;
+}
+
+.btn-analyse-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* =========================================================
+   STARLIGHT HANDHELD HARDWARE & CRT SCREEN STYLES (VERBATIM FROM STITCH SPEC)
+   ========================================================= */
+
+/* Handheld CRT Scanline Overlay Effect */
+/* NOTE: pointer-events must NOT be set on the element — only on ::before/::after overlays.
+   Setting it on the element itself would block ALL click events for children. */
+.crt-overlay {
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.03));
+  background-size: 100% 4px, 6px 100%;
+}
+
+/* Skeuomorphic Handheld Bevels */
+.chassis-bevel {
+  box-shadow: inset 4px 4px 0px #435dd8, inset -4px -4px 0px #0b0f28, 0 12px 28px rgba(0, 0, 0, 0.7);
+}
+
+.screen-recess {
+  box-shadow: inset 4px 4px 0px #060a18, inset -3px -3px 0px #25293f;
+}
+
+.cartridge-bevel {
+  box-shadow: 2px 2px 0px #435dd8, inset -2px -2px 0px #0b0f28;
+}
+
+.btn-tactile {
+  box-shadow: 3px 3px 0px #0b0f28;
+  transition: all 0.05s ease;
+  user-select: none;
+}
+
+.btn-tactile:hover {
+  filter: brightness(1.1);
+}
+
+.btn-tactile:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #0b0f28;
+}
+
+/* Cyber Drop Zone Pixel Border */
+.pixel-dashed-border {
+  border: 2px dashed #5ce1e6;
+  background-size: 16px 16px;
+}
+
+/* CRT Phosphor Glow */
+.cyan-glow {
+  text-shadow: 0 0 8px rgba(92, 225, 230, 0.75);
+}
+
+.gold-glow {
+  text-shadow: 0 0 8px rgba(255, 232, 134, 0.75);
+}
+
+/* Cyber Bevel Inset / Outset Tokens */
+.bevel-raised {
+  border-top: 2px solid #435dd8;
+  border-left: 2px solid #435dd8;
+  border-bottom: 2px solid #0b0f28;
+  border-right: 2px solid #0b0f28;
+}
+
+.bevel-pressed {
+  border-top: 2px solid #0b0f28;
+  border-left: 2px solid #0b0f28;
+  border-bottom: 2px solid #435dd8;
+  border-right: 2px solid #435dd8;
+}
+
+.bevel-inset {
+  box-shadow: inset 2px 2px 0px #060a18, inset -2px -2px 0px #3b52be;
+}
+
+/* Custom retro scrollbar */
+.retro-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.retro-scrollbar::-webkit-scrollbar-track {
+  background: #090d22;
+}
+.retro-scrollbar::-webkit-scrollbar-thumb {
+  background: #1a2556;
+  border: 1px solid #3c4949;
+}
+.retro-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #435dd8;
+}
+
+/* =========================================================
+   RETRO-FUTURISTIC SCI-FI TERMINAL & CYBERPUNK 8-BIT THEME
+   ========================================================= */
+
+/* CRT Glow and Screen Phosphor Scanlines */
+.crt-terminal-screen {
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, #071020 0%, #03060d 100%);
+  border: 2px solid #00f0ff;
+  box-shadow: 
+    inset 0 0 40px rgba(0, 240, 255, 0.08),
+    0 0 20px rgba(0, 240, 255, 0.2),
+    4px 4px 0px #02060f;
+  overflow: hidden;
+}
+
+.crt-terminal-screen::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+  background-size: 100% 3px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.65;
+}
+
+/* Sweeping CRT Scan Beam */
+@keyframes crtScanlineSweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.crt-raster-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.15), transparent);
+  pointer-events: none;
+  animation: crtScanlineSweep 6s linear infinite;
+  z-index: 6;
+}
+
+/* Laser Scanner Sweep Animation (for Upload Receptacle) */
+@keyframes laserScanSweep {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 96%; opacity: 1; filter: drop-shadow(0 0 8px #00f0ff); }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+.laser-scanner-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #00f0ff;
+  box-shadow: 0 0 12px #00f0ff, 0 0 24px #00f0ff;
+  z-index: 10;
+  pointer-events: none;
+  animation: laserScanSweep 3s ease-in-out infinite;
+}
+
+/* 8-Bit Pixel Stepped Border Utilities */
+.pixel-border-box {
+  background: #060a14;
+  border: 2px solid #00f0ff;
+  box-shadow: 
+    3px 3px 0px #000,
+    -1px -1px 0px #0e223d,
+    0 0 14px rgba(0, 240, 255, 0.15);
+  position: relative;
+}
+
+.pixel-border-box-green {
+  background: #040d07;
+  border: 2px solid #39ff14;
+  box-shadow: 
+    3px 3px 0px #000,
+    0 0 14px rgba(57, 255, 20, 0.2);
+}
+
+.pixel-border-box-amber {
+  background: #0f0a02;
+  border: 2px solid #ffb703;
+  box-shadow: 
+    3px 3px 0px #000,
+    0 0 14px rgba(255, 183, 3, 0.2);
+}
+
+.pixel-border-box-magenta {
+  background: #12030a;
+  border: 2px solid #ff007f;
+  box-shadow: 
+    3px 3px 0px #000,
+    0 0 14px rgba(255, 0, 127, 0.2);
+}
+
+/* Pixel Corner Notches (ASCII / 8-Bit Brackets) */
+.pixel-corner-brackets::before {
+  content: "◤";
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 10px;
+  color: #00f0ff;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.pixel-corner-brackets::after {
+  content: "◢";
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 10px;
+  color: #00f0ff;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Cyber Caution Hazard Stripes */
+.cyber-hazard-stripes {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(0, 240, 255, 0.15),
+    rgba(0, 240, 255, 0.15) 8px,
+    rgba(3, 8, 18, 0.9) 8px,
+    rgba(3, 8, 18, 0.9) 16px
+  );
+}
+
+.cyber-hazard-stripes-amber {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 183, 3, 0.2),
+    rgba(255, 183, 3, 0.2) 8px,
+    rgba(15, 10, 2, 0.9) 8px,
+    rgba(15, 10, 2, 0.9) 16px
+  );
+}
+
+/* 8-Bit Chunky Tactile Arcade Button */
+.btn-cyber-8bit {
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  padding: 12px 18px;
+  background: #00f0ff;
+  color: #030812;
+  border: 2px solid #ffffff;
+  box-shadow: 
+    4px 4px 0px #013845,
+    inset -2px -2px 0px #0096a6,
+    inset 2px 2px 0px #bbf8ff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.08s ease;
+  user-select: none;
+}
+
+.btn-cyber-8bit:hover {
+  background: #5cf4ff;
+  transform: translate(-2px, -2px);
+  box-shadow: 
+    6px 6px 0px #013845,
+    0 0 20px rgba(0, 240, 255, 0.6);
+}
+
+.btn-cyber-8bit:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #013845;
+}
+
+/* Blinking Terminal Cursor */
+@keyframes blinkCursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.terminal-cursor-blink {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background-color: #00f0ff;
+  animation: blinkCursor 0.9s infinite;
+  vertical-align: middle;
+}
+
+.terminal-cursor-green {
+  background-color: #39ff14;
+}
+
+.terminal-cursor-amber {
+  background-color: #ffb703;
+}
+
+/* 8-Bit Pixel ROM Cartridge Chip Badge */
+.rom-cartridge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  background: #0b1526;
+  border: 1px solid #00f0ff;
+  box-shadow: 2px 2px 0px #000;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #00f0ff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+}
+
+.rom-cartridge-chip:hover {
+  background: #00f0ff;
+  color: #040914;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+/* Segmented LED Meter Blocks */
+.led-meter-container {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.led-bar-block {
+  width: 6px;
+  height: 10px;
+  background: #112036;
+  border-radius: 1px;
+}
+
+.led-bar-block.active-cyan {
+  background: #00f0ff;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.8);
+}
+
+.led-bar-block.active-green {
+  background: #39ff14;
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.8);
+}
+
+.led-bar-block.active-amber {
+  background: #ffb703;
+  box-shadow: 0 0 6px rgba(255, 183, 3, 0.8);
+}
+
+.led-bar-block.active-red {
+  background: #ff0055;
+  box-shadow: 0 0 6px rgba(255, 0, 85, 0.8);
+}
+
+/* Cyber Glitch Animation on Hover */
+@keyframes cyberGlitchText {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(-1px, -1px); }
+  60% { transform: translate(2px, 0); }
+  80% { transform: translate(1px, 2px); }
+  100% { transform: translate(0); }
+}
+
+.hover-glitch:hover {
+  animation: cyberGlitchText 0.2s linear infinite;
+}
+
+
+

@@ -5,10 +5,96 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Syntropy GeoQuest: Pixel Art Geography Explorer</title>
-    <!-- Google Fonts for Retro Pixel & Modern Hybrid Aesthetics -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Space Grotesk, Space Mono, JetBrains Mono, Press Start 2P, Outfit, VT323 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&family=VT323&display=swap" rel="stylesheet" />
+    <!-- Material Symbols Outlined -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <!-- Tailwind CSS with plugins & Custom Retro Theme Configuration -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-container": "#eccb00",
+              "on-primary-fixed": "#002021",
+              "on-tertiary-container": "#4052a1",
+              "tertiary-container": "#c3ccff",
+              "screen-crt": "#060a18",
+              "beveled-highlight": "#435dd8",
+              "surface-bright": "#34384f",
+              "star-cyan": "#a5f3fc",
+              "secondary-fixed": "#ffe25a",
+              "on-primary-container": "#006265",
+              "surface-container-low": "#161a30",
+              "secondary-fixed-dim": "#e5c500",
+              "surface-container-lowest": "#090d22",
+              "surface-container-highest": "#30334a",
+              "tertiary-fixed": "#dde1ff",
+              "on-secondary-fixed": "#211b00",
+              "tertiary-fixed-dim": "#b8c3ff",
+              "on-error-container": "#ffdad6",
+              "surface-variant": "#30334a",
+              "surface-container-high": "#25293f",
+              "tertiary": "#e8e9ff",
+              "warning-magenta": "#ff007f",
+              "beveled-shadow": "#0b0f28",
+              "outline": "#869394",
+              "error-container": "#93000a",
+              "primary-fixed-dim": "#52d9de",
+              "on-background": "#dee1fe",
+              "on-tertiary": "#122878",
+              "inverse-surface": "#dee1fe",
+              "on-surface-variant": "#bbc9c9",
+              "surface-dim": "#0e1227",
+              "background": "#0e1227",
+              "chassis-light": "#3b52be",
+              "on-secondary-fixed-variant": "#534600",
+              "on-error": "#690005",
+              "on-tertiary-fixed": "#001356",
+              "on-secondary-container": "#655500",
+              "inverse-on-surface": "#2b2f46",
+              "on-secondary": "#393000",
+              "on-tertiary-fixed-variant": "#2d408f",
+              "on-primary": "#003738",
+              "primary-container": "#5ce1e6",
+              "chassis-dark": "#11183c",
+              "on-primary-fixed-variant": "#004f52",
+              "on-surface": "#dee1fe",
+              "surface-container": "#1a1e34",
+              "inverse-primary": "#00696c",
+              "error": "#ffb4ab",
+              "terminal-green": "#39ff14",
+              "surface": "#0e1227",
+              "outline-variant": "#3c4949",
+              "primary-fixed": "#73f6fb",
+              "secondary": "#ffe886",
+              "primary": "#95fbff",
+              "console-chassis": "#1a2556",
+              "surface-tint": "#52d9de"
+            },
+            fontFamily: {
+              "headline-sm": ["Space Grotesk", "sans-serif"],
+              "headline-lg-mobile": ["Space Grotesk", "sans-serif"],
+              "label-md": ["Space Mono", "monospace"],
+              "label-sm": ["Space Mono", "monospace"],
+              "body-sm": ["JetBrains Mono", "monospace"],
+              "headline-lg": ["Space Grotesk", "sans-serif"],
+              "headline-md": ["Space Grotesk", "sans-serif"],
+              "body-md": ["JetBrains Mono", "monospace"],
+              "display-hero": ["Space Grotesk", "sans-serif"],
+              "label-lg": ["Space Mono", "monospace"],
+              "display-hero-mobile": ["Space Grotesk", "sans-serif"],
+              "body-lg": ["JetBrains Mono", "monospace"],
+              "pixel": ["'Press Start 2P'", "monospace"]
+            }
+          }
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
