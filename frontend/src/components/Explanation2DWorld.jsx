@@ -2203,14 +2203,46 @@ export default function Explanation2DWorld({
         const domain = diagramDomain;
         const curStageObj = domainStages[diagramStep] || domainStages[0];
 
-        // Header Telemetry
-        ctx.font = '700 13px "Space Grotesk", sans-serif';
+        // Header Telemetry Panel
+        ctx.save();
+        ctx.fillStyle = 'rgba(8, 15, 30, 0.88)';
+        ctx.fillRect(20, 12, W - 40, 50);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20, 12, W - 40, 50);
+
+        // Cybernetic corner tag
         ctx.fillStyle = themeCol;
+        ctx.fillRect(20, 12, 4, 50);
+
+        ctx.font = 'bold 13px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
-        ctx.fillText(`CONCEPT ARCHITECTURE: ${nodeTitle.toUpperCase()}`, 25, 30);
-        ctx.font = '11px monospace';
+        ctx.fillText(`CONCEPT ARCHITECTURE: `, 34, 32);
+
+        const prefixW = ctx.measureText(`CONCEPT ARCHITECTURE: `).width;
+        ctx.fillStyle = themeCol;
+        ctx.fillText(nodeTitle.toUpperCase(), 34 + prefixW, 32);
+
+        ctx.font = '10px monospace';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText(`${nodeCluster}  |  DOMAIN: [${domain.toUpperCase()}]  |  [STAGE ${diagramStep + 1}: ${curStageObj.stage.toUpperCase()}]  |  CYCLE: ${(localTick % 1000)}`, 25, 48);
+        ctx.fillText(`CLUSTER: [${nodeCluster}]`, 34, 50);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`DOMAIN: [${domain.toUpperCase()}]`, 210, 50);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText(`[PHASE ${diagramStep + 1}/3: ${curStageObj.stage.toUpperCase()}]`, 370, 50);
+
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(W - 42, 37, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#10b981';
+        ctx.textAlign = 'right';
+        ctx.fillText(`LIVE SCHEMATIC`, W - 52, 40);
+        ctx.restore();
 
         // Dispatch to domain-specific scientific / technical diagrams
         if (domain === 'chemistry') {
@@ -2226,20 +2258,39 @@ export default function Explanation2DWorld({
         }
 
         // Bottom Banner with Dynamic Domain Stage & Explanation
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-        ctx.fillRect(25, H - 75, W - 50, 55);
+        ctx.save();
+        ctx.fillStyle = 'rgba(8, 15, 30, 0.94)';
+        ctx.fillRect(20, H - 76, W - 40, 58);
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-        ctx.strokeRect(25, H - 75, W - 50, 55);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20, H - 76, W - 40, 58);
 
-        ctx.font = '700 12px "Space Grotesk", sans-serif';
+        // Accent indicator bar
         ctx.fillStyle = themeCol;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(curStageObj.stage.toUpperCase(), 40, H - 68);
+        ctx.fillRect(20, H - 76, 5, 58);
 
-        ctx.font = '11px sans-serif';
+        // Phase badge
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
+        ctx.fillRect(34, H - 68, 76, 18);
+        ctx.strokeStyle = themeCol;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(34, H - 68, 76, 18);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = themeCol;
+        ctx.textAlign = 'center';
+        ctx.fillText(`PHASE ${diagramStep + 1}/3`, 72, H - 56);
+
+        // Stage Title
+        ctx.font = 'bold 13px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.fillText(curStageObj.stage.toUpperCase(), 120, H - 55);
+
+        // Explanation text
+        ctx.font = '12px sans-serif';
         ctx.fillStyle = '#cbd5e1';
-        ctx.fillText(curStageObj.detail || nodeExplanation, 40, H - 48);
+        ctx.fillText(curStageObj.detail || nodeExplanation, 34, H - 28);
+        ctx.restore();
       } catch (err) {
         console.warn('Diagram render catch:', err);
       }
@@ -2261,11 +2312,11 @@ export default function Explanation2DWorld({
   return (
     <div className="flex flex-col space-y-4">
       {/* ── Sub-Selector for Diagram Topic & Concept Nodes ── */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-[#080d19] p-2.5 rounded-lg border border-[#192742]">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#080d19] p-3 rounded-lg border border-[#192742] shadow-[0_0_20px_rgba(6,182,212,0.08)]">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-950/80 border border-cyan-400 text-cyan-300 font-mono text-xs font-bold shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-            <Layers className="w-3.5 h-3.5" />
-            <span>2D DIAGRAM TOPIC:</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-cyan-950/80 border border-cyan-400/80 text-cyan-300 font-mono text-xs font-bold shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+            <Layers className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="tracking-wider">CONCEPT ARCHITECTURE:</span>
           </div>
 
           {nodes.map((n) => {
@@ -2278,20 +2329,25 @@ export default function Explanation2DWorld({
                   setSelectedNodeId(n.id);
                   setDiagramStep(0);
                 }}
-                className={`btn-pixel text-[8px] sm:text-[10px] py-1.5 px-2.5 flex items-center gap-1.5 ${
-                  isCur ? 'btn-pixel-amber' : ''
+                className={`group px-3 py-1.5 rounded font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                  isCur
+                    ? 'bg-amber-500 text-black border border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-102'
+                    : 'bg-[#0a1324] border border-[#1e2f4d] text-slate-300 hover:text-white hover:border-cyan-500/50 hover:bg-[#0f1d38]'
                 }`}
               >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isCur ? '#ffffff' : n.themeColor }}></div>
-                <span className="truncate max-w-[200px]">{n.title.toUpperCase()}</span>
+                <div
+                  className={`w-2 h-2 rounded-full transition-transform ${isCur ? 'bg-black' : 'group-hover:scale-125'}`}
+                  style={{ backgroundColor: isCur ? '#000000' : (n.themeColor || '#38bdf8') }}
+                />
+                <span className="truncate max-w-[200px] tracking-wide">{n.title.toUpperCase()}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-500">
+        <div className="flex items-center gap-2 font-mono text-xs text-cyan-400/80 bg-cyan-950/40 px-2.5 py-1 rounded border border-cyan-500/30">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-          <span>2D SCHEMATICS ACTIVE</span>
+          <span className="font-bold tracking-wider">SCHEMATICS ONLINE</span>
         </div>
       </div>
 
@@ -2310,7 +2366,7 @@ export default function Explanation2DWorld({
             <div className="absolute top-3 right-3 flex items-center gap-2">
               <button
                 onClick={() => setIsSimulating(!isSimulating)}
-                className="p-1.5 rounded bg-[#091325]/90 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 cursor-pointer backdrop-blur-sm"
+                className="p-1.5 rounded bg-[#091325]/90 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 cursor-pointer backdrop-blur-sm shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all"
                 title={isSimulating ? 'Pause Animation' : 'Play Animation'}
               >
                 {isSimulating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -2321,7 +2377,7 @@ export default function Explanation2DWorld({
                   retroAudio.playBlip?.();
                   setDiagramStep(0);
                 }}
-                className="p-1.5 rounded bg-[#091325]/90 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 cursor-pointer backdrop-blur-sm"
+                className="p-1.5 rounded bg-[#091325]/90 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/30 cursor-pointer backdrop-blur-sm shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all"
                 title="Reset Simulation"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -2329,8 +2385,8 @@ export default function Explanation2DWorld({
             </div>
           </div>
 
-          {/* Step Navigation Bar */}
-          <div className="p-3 bg-[#080d19] rounded-lg border border-[#192742] flex items-center justify-between gap-3">
+          {/* Step Navigation & Mechanism Stepper */}
+          <div className="p-3 bg-[#080d19] rounded-lg border border-[#192742] flex flex-wrap items-center justify-between gap-3 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
             <div className="flex items-center gap-2">
               <button
                 disabled={diagramStep === 0}
@@ -2341,16 +2397,31 @@ export default function Explanation2DWorld({
                 className={`px-3 py-1.5 rounded font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
                   diagramStep === 0
                     ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500'
-                    : 'bg-[#0f172a] border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 cursor-pointer'
+                    : 'bg-[#0f172a] border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]'
                 }`}
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>PREV STEP</span>
+                <span>PREV PHASE</span>
               </button>
 
-              <span className="font-mono text-xs text-slate-300 font-bold px-2">
-                STEP {diagramStep + 1} OF 3
-              </span>
+              <div className="flex items-center gap-1 mx-1">
+                {[0, 1, 2].map((sIdx) => (
+                  <button
+                    key={sIdx}
+                    onClick={() => {
+                      retroAudio.playBlip?.();
+                      setDiagramStep(sIdx);
+                    }}
+                    className={`px-2.5 py-1 rounded font-mono text-xs font-bold transition-all cursor-pointer ${
+                      diagramStep === sIdx
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                        : 'bg-[#0c1629] text-slate-400 border border-[#1b2b47] hover:text-cyan-300 hover:border-cyan-500/40'
+                    }`}
+                  >
+                    PHASE {sIdx + 1}
+                  </button>
+                ))}
+              </div>
 
               <button
                 disabled={diagramStep >= 2}
@@ -2361,30 +2432,46 @@ export default function Explanation2DWorld({
                 className={`px-3 py-1.5 rounded font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
                   diagramStep >= 2
                     ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500'
-                    : 'bg-[#0f172a] border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 cursor-pointer'
+                    : 'bg-[#0f172a] border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]'
                 }`}
               >
-                <span>NEXT STEP</span>
+                <span>NEXT PHASE</span>
                 <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-slate-400">SIM SPEED:</span>
+              <button
+                onClick={() => setSimulationSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1))}
+                className="px-2.5 py-1 rounded bg-[#091325] border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold hover:bg-cyan-900/40 cursor-pointer transition-all"
+              >
+                {simulationSpeed}x
               </button>
             </div>
           </div>
         </div>
 
         {/* Right: Step Analysis Breakdown (1 col) */}
-        <div className="p-4 rounded-lg bg-[#080d19] border border-[#192742] space-y-4 text-left flex flex-col justify-between">
+        <div className="p-4 rounded-lg bg-[#080d19] border border-[#192742] space-y-4 text-left flex flex-col justify-between shadow-[0_0_20px_rgba(6,182,212,0.08)]">
           <div className="space-y-3">
-            <div className="border-b border-[#16233a] pb-2">
-              <div className="font-mono text-xs font-bold text-cyan-400 uppercase">
-                MECHANISM BREAKDOWN
+            <div className="border-b border-[#16233a] pb-2.5 flex items-center justify-between">
+              <div>
+                <div className="font-mono text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-sm bg-cyan-400"></span>
+                  <span>MECHANISM BREAKDOWN</span>
+                </div>
+                <div className="font-mono text-xs text-slate-400 mt-1">
+                  {selectedNode?.cluster || 'Core Topic'}
+                </div>
               </div>
-              <div className="font-mono text-[10px] text-slate-400 mt-0.5">
-                {selectedNode?.cluster || 'Core Topic'}
-              </div>
+              <span className="font-mono text-[11px] font-bold text-cyan-300/80 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/40">
+                PHASE {diagramStep + 1}/3
+              </span>
             </div>
 
             {/* Steps List */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {domainStages.map((st, idx) => {
                 const isStepActive = diagramStep === idx;
                 return (
@@ -2394,23 +2481,48 @@ export default function Explanation2DWorld({
                       retroAudio.playBlip?.();
                       setDiagramStep(idx);
                     }}
-                    className={`p-2.5 rounded border transition-all cursor-pointer ${
+                    className={`p-3 rounded-lg border transition-all cursor-pointer relative overflow-hidden ${
                       isStepActive
-                        ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                        : 'bg-[#0a1120] border-[#141f36] opacity-75 hover:opacity-100 hover:border-slate-600'
+                        ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)] translate-x-1'
+                        : 'bg-[#0a1120] border-[#141f36] opacity-80 hover:opacity-100 hover:border-slate-500 hover:bg-[#0c162a]'
                     }`}
                   >
+                    {isStepActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-emerald-400"></div>
+                    )}
                     <div className="font-mono text-xs font-bold text-white flex items-center justify-between">
-                      <span>{st.stage}</span>
-                      {isStepActive && <span className="w-2 h-2 rounded-full bg-cyan-400"></span>}
+                      <div className="flex items-center gap-2">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          isStepActive ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          0{idx + 1}
+                        </span>
+                        <span>{st.stage}</span>
+                      </div>
+                      {isStepActive && (
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                        </span>
+                      )}
                     </div>
-                    <p className="font-sans text-[11px] text-slate-300 mt-1 leading-snug">
+                    <p className="font-sans text-xs text-slate-300 mt-1.5 leading-relaxed">
                       {st.detail}
                     </p>
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          {/* Quick Node Recall Prompt at the bottom */}
+          <div className="pt-3 border-t border-[#16233a] space-y-1.5">
+            <div className="font-mono text-[11px] font-bold text-slate-400 tracking-wider">
+              RECALL TARGET:
+            </div>
+            <p className="font-mono text-xs text-amber-300/90 leading-relaxed italic bg-amber-950/20 p-2 rounded border border-amber-500/20">
+              "{selectedNode?.recallPrompt || 'How does this mechanism operate within the system?'}"
+            </p>
           </div>
         </div>
       </div>
