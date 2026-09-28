@@ -82,6 +82,1290 @@ function bezierPoint(p0, p1, p2, p3, t) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   2D SCIENTIFIC & TECHNICAL DIAGRAM ENGINES
+───────────────────────────────────────────────────────────── */
+function drawRoundRect(ctx, x, y, w, h, r = 6) {
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+}
+
+function drawHexagon(ctx, x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i;
+    const hx = x + r * Math.cos(a);
+    const hy = y + r * Math.sin(a);
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawBondLine(ctx, x1, y1, x2, y2, color = '#38bdf8', width = 2.5) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+function drawDoubleBond(ctx, x1, y1, x2, y2, color = '#10b981', offset = 4) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / len) * offset;
+  const ny = (dx / len) * offset;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+
+  ctx.beginPath();
+  ctx.moveTo(x1 + nx, y1 + ny);
+  ctx.lineTo(x2 + nx, y2 + ny);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x1 - nx, y1 - ny);
+  ctx.lineTo(x2 - nx, y2 - ny);
+  ctx.stroke();
+}
+
+function drawAtomBadge(ctx, x, y, label, color = '#38bdf8', isHighlight = false) {
+  ctx.beginPath();
+  ctx.arc(x, y, 16, 0, Math.PI * 2);
+  ctx.fillStyle = isHighlight ? 'rgba(244, 63, 94, 0.22)' : 'rgba(15, 23, 42, 0.95)';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isHighlight ? 2 : 1.5;
+  ctx.stroke();
+
+  ctx.font = '700 11px monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawOrbitalLobe(ctx, x, y, w, h, fillCol, strokeCol, sign) {
+  ctx.save();
+  ctx.fillStyle = fillCol;
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(x, y, w, h, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = '700 11px monospace';
+  ctx.fillStyle = strokeCol;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(sign, x, y);
+  ctx.restore();
+}
+
+function drawCurvedElectronArrow(ctx, startX, startY, endX, endY, cpX, cpY, color, tick) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([5, 4]);
+  ctx.lineDashOffset = -tick * 0.9;
+
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const angle = Math.atan2(endY - cpY, endX - cpX);
+  const headLen = 10;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(
+    endX - headLen * Math.cos(angle - Math.PI / 6),
+    endY - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    endX - headLen * Math.cos(angle + Math.PI / 6),
+    endY - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawIon(ctx, x, y, label, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, 11, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = '700 9px monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function detectDiagramDomain(node, data) {
+  const text = `${node?.title || ''} ${node?.explanation || ''} ${node?.cluster || ''} ${data?.subject_title || ''} ${data?.raw_transcription || ''} ${data?.summary || ''}`.toLowerCase();
+
+  // 1. Chemistry / Organic Chemistry / Reactions
+  if (
+    text.includes('alkene') || text.includes('alcohol') || text.includes('acid') ||
+    text.includes('dehydration') || text.includes('carbocation') || text.includes('bromine') ||
+    text.includes('saytzeff') || text.includes('zaitsev') || text.includes('catalyst') ||
+    text.includes('proton') || text.includes('oxonium') || text.includes('ester') ||
+    text.includes('addition') || text.includes('elimination') || text.includes('lewis') ||
+    text.includes('organic chemistry') || text.includes('unsaturation') || text.includes('reaction')
+  ) {
+    return 'chemistry';
+  }
+
+  // 2. Data Engineering / Entity Resolution / ML / Databases
+  if (
+    text.includes('entity') || text.includes('resolution') || text.includes('blocking') ||
+    text.includes('jaccard') || text.includes('jaro') || text.includes('tsv') ||
+    text.includes('csv') || text.includes('record') || text.includes('deduplicat') ||
+    text.includes('golden') || text.includes('classifier') || text.includes('pairwise') ||
+    text.includes('clustering') || text.includes('similarity') || text.includes('database') ||
+    text.includes('pipeline') || text.includes('hash') || text.includes('token')
+  ) {
+    return 'data_pipeline';
+  }
+
+  // 3. Biology / Cellular Physiology / Neuroscience
+  if (
+    text.includes('membrane') || text.includes('phospholipid') || text.includes('bilayer') ||
+    text.includes('cell') || text.includes('neuron') || text.includes('action potential') ||
+    text.includes('atp') || text.includes('mitochondria') || text.includes('ion channel') ||
+    text.includes('sodium') || text.includes('potassium') || text.includes('depolariz') ||
+    text.includes('dna') || text.includes('rna') || text.includes('synapse') ||
+    text.includes('biology') || text.includes('enzyme')
+  ) {
+    return 'biology';
+  }
+
+  // 4. Physics / Quantum / Electromagnetism / Atoms
+  if (
+    text.includes('atom') || text.includes('bohr') || text.includes('orbital') ||
+    text.includes('photon') || text.includes('quantum') || text.includes('electron') ||
+    text.includes('emission') || text.includes('spectral') || text.includes('spectrum') ||
+    text.includes('energy level') || text.includes('rydberg') || text.includes('electromagnet') ||
+    text.includes('physics') || text.includes('optics') || text.includes('wavelength')
+  ) {
+    return 'physics';
+  }
+
+  return 'system';
+}
+
+function getDomainStages(domain, node, data) {
+  const title = String(node?.title || 'Concept');
+  if (domain === 'chemistry') {
+    return [
+      {
+        stage: 'Stage 1: Protonation & Activation',
+        detail: `Electrophilic attack by acid catalyst (H⁺) on the substrate oxygen lone pair, converting the poor leaving group (-OH) into a reactive oxonium ion [R-OH₂⁺].`
+      },
+      {
+        stage: 'Stage 2: Carbocation Intermediate',
+        detail: `Heterolytic cleavage of the C-O bond eliminates neutral H₂O, generating a planar sp² carbocation intermediate with empty p-orbitals awaiting elimination.`
+      },
+      {
+        stage: 'Stage 3: Elimination & Alkene Formation',
+        detail: `A conjugate base abstracts the adjacent β-hydrogen, causing electron pair collapse into a stable C=C π-bond (Saytzeff product), confirmed via rapid Br₂ decolorization.`
+      }
+    ];
+  }
+  if (domain === 'data_pipeline') {
+    return [
+      {
+        stage: 'Stage 1: Inverted Hash Blocking',
+        detail: `Raw dirty records are parsed and partitioned into hash buckets via phonetic/token keys, slashing candidate comparison complexity from O(N²) down to isolated candidate subsets.`
+      },
+      {
+        stage: 'Stage 2: Metric Distance & Classification',
+        detail: `Candidate pairs evaluate multi-attribute similarity vectors (Jaro-Winkler for names, Jaccard for tokens, Levenshtein for IDs) through a tuned machine learning decision threshold.`
+      },
+      {
+        stage: 'Stage 3: Clustering & Golden Entity Synthesis',
+        detail: `Connected components in the similarity graph are merged into canonical Golden Entity Records with verified provenance, attribute aggregation, and deduplication.`
+      }
+    ];
+  }
+  if (domain === 'biology') {
+    return [
+      {
+        stage: 'Stage 1: Resting Potential & Gradient',
+        detail: `Phospholipid bilayer maintains strict electrochemical polarization (-70 mV) via high extracellular Na⁺ and high intracellular K⁺ resting distribution.`
+      },
+      {
+        stage: 'Stage 2: Gating & Depolarizing Influx',
+        detail: `Threshold stimulus triggers conformational opening of voltage-gated Na⁺ channels; massive rapid sodium influx drives membrane potential spike up to +30 mV.`
+      },
+      {
+        stage: 'Stage 3: Active Repolarization & Pump',
+        detail: `Voltage-gated K⁺ efflux repolarizes the membrane, while Na⁺/K⁺-ATPase pumps actively hydrolyze ATP to restore baseline ionic gradients (3 Na⁺ out, 2 K⁺ in).`
+      }
+    ];
+  }
+  if (domain === 'physics') {
+    return [
+      {
+        stage: 'Stage 1: Bound Quantized Ground State',
+        detail: `Electrons occupy discrete, quantized Bohr orbital radii where orbital angular momentum is an integer multiple of ℏ, stabilized in the ground potential well (n=1).`
+      },
+      {
+        stage: 'Stage 2: Resonant Photon Excitation',
+        detail: `Incident electromagnetic wavepacket of precise energy (ΔE = hν) resonates with the bound electron, inducing a quantum leap across forbidden gaps into higher shell (n=3).`
+      },
+      {
+        stage: 'Stage 3: Radiative Spontaneous De-excitation',
+        detail: `Excited electron cascades down to lower orbital (n=2), spontaneously radiating a discrete photon with characteristic spectral wavelength (Balmer emission series).`
+      }
+    ];
+  }
+  // System / General
+  return [
+    {
+      stage: 'Stage 1: Ingestion & Signal Mapping',
+      detail: `Initial state parameters and incoming signal precursors are buffered and mapped into functional memory registers for ${title}.`
+    },
+    {
+      stage: 'Stage 2: Algorithmic Transformation',
+      detail: node?.explanation || `Core logical execution pathway evaluates transformation rules across the active processing substrate.`
+    },
+    {
+      stage: 'Stage 3: Verified Dispatch & Output',
+      detail: `Resultant state matrices are validated against integrity constraints and propagated to downstream subscribers.`
+    }
+  ];
+}
+
+/* ── DOMAIN DRAWING METHOD: CHEMISTRY ── */
+function drawChemistryDiagram(ctx, W, H, localTick, step, node, data, themeCol) {
+  const cx = W / 2;
+  const cy = H / 2 - 15;
+
+  // Background style: Subtle hexagonal carbon ring lattice
+  ctx.strokeStyle = 'rgba(6, 182, 212, 0.05)';
+  ctx.lineWidth = 1;
+  const hexR = 24;
+  for (let x = 40; x < W - 40; x += hexR * 3) {
+    for (let y = 50; y < H - 80; y += hexR * 1.732) {
+      drawHexagon(ctx, x, y, hexR);
+    }
+  }
+
+  // Stage 0: Reactant Alcohol & Acid Catalyst Activation (Protonation)
+  if (step === 0) {
+    const molX = cx - 180;
+    const molY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.85)';
+    ctx.fillRect(molX - 170, molY - 120, 340, 240);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(molX - 170, molY - 120, 340, 240);
+
+    ctx.fillStyle = '#06b6d4';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('SUBSTRATE: ETHANOL / PROPAN-2-OL [R-OH]', molX - 155, molY - 98);
+
+    const c1X = molX - 90, c1Y = molY + 10;
+    const c2X = molX - 10, c2Y = molY - 20;
+    const oX  = molX + 70, oY  = molY + 10;
+    const hX  = molX + 120, hY = molY - 15;
+
+    drawBondLine(ctx, c1X + 20, c1Y, c2X - 20, c2Y, '#38bdf8', 3);
+    drawBondLine(ctx, c2X + 20, c2Y, oX - 18, oY, '#38bdf8', 3);
+    drawBondLine(ctx, oX + 16, oY - 5, hX - 12, hY + 5, '#e2e8f0', 2);
+
+    drawAtomBadge(ctx, c1X, c1Y, 'CH₃', '#38bdf8');
+    drawAtomBadge(ctx, c2X, c2Y, 'CH₂', '#38bdf8');
+    drawAtomBadge(ctx, oX, oY, ':Ö:', '#f43f5e', true);
+    drawAtomBadge(ctx, hX, hY, 'H', '#e2e8f0');
+
+    // Lone pair dots on Oxygen
+    ctx.fillStyle = '#fb7185';
+    const lpPulse = Math.sin(localTick * 0.1) * 1.5;
+    ctx.beginPath();
+    ctx.arc(oX - 4, oY - 16, 2.5 + lpPulse * 0.2, 0, Math.PI * 2);
+    ctx.arc(oX + 4, oY - 16, 2.5 + lpPulse * 0.2, 0, Math.PI * 2);
+    ctx.arc(oX - 14, oY - 6, 2.5, 0, Math.PI * 2);
+    ctx.arc(oX - 14, oY + 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Acid catalyst incoming proton H+ (from H2SO4)
+    const acidX = cx + 220;
+    const acidY = cy - 40;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(acidX - 110, acidY - 70, 220, 160);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(acidX - 110, acidY - 70, 220, 160);
+
+    ctx.font = '700 11px monospace';
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'center';
+    ctx.fillText('ACID CATALYST [H₂SO₄]', acidX, acidY - 48);
+
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('H₂SO₄  ⇌  H⁺  +  HSO₄⁻', acidX, acidY - 26);
+
+    const protonPulse = Math.sin(localTick * 0.08) * 4;
+    ctx.beginPath();
+    ctx.arc(acidX, acidY + 24, 22 + protonPulse, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(acidX, acidY + 24, 15, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.font = '700 13px sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('H⁺', acidX, acidY + 28);
+
+    // Curved electron-pushing arrow
+    drawCurvedElectronArrow(ctx, oX, oY - 18, acidX - 18, acidY + 20, cx + 40, cy - 110, '#f43f5e', localTick);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Oxygen lone pair attacks electrophilic H⁺ proton → Forms protonated oxonium ion [R-OH₂⁺]', cx, molY + 140);
+  }
+
+  // Stage 1: Leaving Group Cleavage & Carbocation Intermediate
+  else if (step === 1) {
+    const midX = cx - 60;
+    const midY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(midX - 180, midY - 125, 360, 250);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(midX - 180, midY - 125, 360, 250);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('INTERMEDIATE: PLANAR sp² CARBOCATION [C⁺]', midX - 165, midY - 100);
+
+    const c1X = midX - 85, c1Y = midY + 15;
+    const c2X = midX + 15, c2Y = midY + 15;
+
+    drawBondLine(ctx, c1X + 20, c1Y, c2X - 20, c2Y, '#38bdf8', 3);
+    drawAtomBadge(ctx, c1X, c1Y, 'CH₃', '#38bdf8');
+
+    // Empty p-orbital lobes (dumbbell vertical)
+    drawOrbitalLobe(ctx, c2X, c2Y - 38, 14, 32, 'rgba(245, 158, 11, 0.35)', 'rgba(245, 158, 11, 0.8)', '+');
+    drawOrbitalLobe(ctx, c2X, c2Y + 38, 14, 32, 'rgba(6, 182, 212, 0.35)', 'rgba(6, 182, 212, 0.8)', '-');
+
+    drawAtomBadge(ctx, c2X, c2Y, 'C⁺', '#f59e0b', true);
+
+    drawBondLine(ctx, c2X, c2Y - 14, c2X, c2Y - 32, '#94a3b8', 1.5);
+
+    // Leaving H2O molecule flying off to the right
+    const waterX = cx + 220 + Math.sin(localTick * 0.05) * 6;
+    const waterY = cy - 30;
+
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(c2X + 22, c2Y);
+    ctx.lineTo(waterX - 45, waterY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawCurvedElectronArrow(ctx, c2X + 35, c2Y - 8, waterX - 25, waterY - 15, (c2X + waterX) / 2, c2Y - 45, '#f43f5e', localTick);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(waterX - 50, waterY - 45, 100, 90);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(waterX - 50, waterY - 45, 100, 90);
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#06b6d4';
+    ctx.textAlign = 'center';
+    ctx.fillText('LEAVING GROUP', waterX, waterY - 26);
+    drawAtomBadge(ctx, waterX, waterY + 6, 'H₂O', '#38bdf8');
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText(': neutral molecule', waterX, waterY + 32);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(midX - 160, midY + 70, 320, 36);
+    ctx.strokeStyle = '#334155';
+    ctx.strokeRect(midX - 160, midY + 70, 320, 36);
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'center';
+    ctx.fillText('CARBOCATION STABILITY RANKING:', midX, midY + 84);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText('3° (tertiary) > 2° (secondary) >> 1° (primary) [Hyperconjugation]', midX, midY + 98);
+  }
+
+  // Stage 2: Alkene Double Bond Formation & Bromine Test
+  else {
+    const pX = cx - 120;
+    const pY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(pX - 190, pY - 125, 380, 250);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(pX - 190, pY - 125, 380, 250);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('ALKENE FORMATION: C=C DOUBLE BOND (π-SYSTEM)', pX - 175, pY - 100);
+
+    const c1X = pX - 50, c1Y = pY + 5;
+    const c2X = pX + 50, c2Y = pY + 5;
+
+    drawDoubleBond(ctx, c1X + 16, c1Y, c2X - 16, c2Y, '#10b981', 5);
+
+    const piPulse = Math.sin(localTick * 0.08) * 3;
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(pX, pY - 26, 52, 16 + piPulse, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(pX, pY + 36, 52, 16 + piPulse, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '700 9px monospace';
+    ctx.fillStyle = '#6ee7b7';
+    ctx.textAlign = 'center';
+    ctx.fillText('π electron cloud', pX, pY - 24);
+
+    drawAtomBadge(ctx, c1X, c1Y, 'C', '#10b981');
+    drawAtomBadge(ctx, c2X, c2Y, 'C', '#10b981');
+
+    drawBondLine(ctx, c1X - 12, c1Y - 10, c1X - 35, c1Y - 30, '#94a3b8', 2);
+    drawAtomBadge(ctx, c1X - 45, c1Y - 38, 'H', '#cbd5e1');
+
+    drawBondLine(ctx, c1X - 12, c1Y + 10, c1X - 35, c1Y + 30, '#38bdf8', 2);
+    drawAtomBadge(ctx, c1X - 48, c1Y + 38, 'CH₃', '#38bdf8');
+
+    drawBondLine(ctx, c2X + 12, c2Y - 10, c2X + 35, c2Y - 30, '#94a3b8', 2);
+    drawAtomBadge(ctx, c2X + 45, c2Y - 38, 'H', '#cbd5e1');
+
+    drawBondLine(ctx, c2X + 12, c2Y + 10, c2X + 35, c2Y + 30, '#38bdf8', 2);
+    drawAtomBadge(ctx, c2X + 48, c2Y + 38, 'CH₃', '#38bdf8');
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(pX - 175, pY + 70, 350, 42);
+    ctx.strokeStyle = '#334155';
+    ctx.strokeRect(pX - 175, pY + 70, 350, 42);
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('SAYTZEFF (ZAITSEV) ELIMINATION RULE:', pX, pY + 85);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText('Major product has the most alkyl-substituted alkene core (high stability).', pX, pY + 100);
+
+    const testX = cx + 210;
+    const testY = cy;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(testX - 85, testY - 110, 170, 220);
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(testX - 85, testY - 110, 170, 220);
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#f43f5e';
+    ctx.textAlign = 'center';
+    ctx.fillText('BROMINE (Br₂) TEST', testX, testY - 88);
+
+    const ttX = testX;
+    const ttY = testY - 15;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ttX - 14, ttY - 40);
+    ctx.lineTo(ttX - 14, ttY + 30);
+    ctx.arc(ttX, ttY + 30, 14, Math.PI, 0, true);
+    ctx.lineTo(ttX + 14, ttY - 40);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(ttX - 12, ttY);
+    ctx.lineTo(ttX - 12, ttY + 30);
+    ctx.arc(ttX, ttY + 30, 12, Math.PI, 0, true);
+    ctx.lineTo(ttX + 12, ttY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = '700 9px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('RAPID DECOLORIZATION', testX, testY + 58);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Red-Brown Br₂ → Clear', testX, testY + 72);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('[UNSATURATION CONFIRMED]', testX, testY + 86);
+  }
+}
+
+/* ── DOMAIN DRAWING METHOD: DATA PIPELINE / ENTITY RESOLUTION ── */
+function drawDataPipelineDiagram(ctx, W, H, localTick, step, node, data, themeCol) {
+  const cx = W / 2;
+  const cy = H / 2 - 15;
+
+  if (step === 0) {
+    const rawX = cx - 240;
+    const rawY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(rawX - 150, rawY - 130, 300, 260);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rawX - 150, rawY - 130, 300, 260);
+
+    ctx.fillStyle = '#06b6d4';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('DIRTY SOURCE RECORDS [TSV / CSV]', rawX - 135, rawY - 105);
+
+    const sampleRecords = [
+      { id: 'REC-101', name: 'Apple Inc.', city: 'Cupertino, CA', tax: 'US-9429' },
+      { id: 'REC-504', name: 'Apple Computer Co.', city: 'Cupertino', tax: 'N/A' },
+      { id: 'REC-899', name: 'Microsoft Corp', city: 'Redmond, WA', tax: 'US-1150' }
+    ];
+
+    sampleRecords.forEach((r, idx) => {
+      const ry = rawY - 75 + idx * 60;
+      ctx.fillStyle = idx < 2 ? 'rgba(6, 182, 212, 0.12)' : 'rgba(30, 41, 59, 0.5)';
+      ctx.fillRect(rawX - 135, ry, 270, 50);
+      ctx.strokeStyle = idx < 2 ? '#06b6d4' : '#334155';
+      ctx.strokeRect(rawX - 135, ry, 270, 50);
+
+      ctx.font = '700 10px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`[${r.id}] ${r.name}`, rawX - 125, ry + 16);
+
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`Loc: ${r.city}  |  Tax: ${r.tax}`, rawX - 125, ry + 34);
+    });
+
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.lineDashOffset = -localTick * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(rawX + 150, rawY);
+    ctx.lineTo(cx + 80, rawY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cx - 50, rawY - 18, 100, 36);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.strokeRect(cx - 50, rawY - 18, 100, 36);
+    ctx.font = '700 9px monospace';
+    ctx.fillStyle = '#22d3ee';
+    ctx.textAlign = 'center';
+    ctx.fillText('TOKEN / N-GRAM', cx, rawY - 3);
+    ctx.fillText('HASH FUNCTION', cx, rawY + 11);
+
+    const bX = cx + 220;
+    const bY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(bX - 140, bY - 130, 280, 260);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bX - 140, bY - 130, 280, 260);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('INVERTED HASH BUCKETS', bX - 125, bY - 105);
+
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+    ctx.fillRect(bX - 125, bY - 80, 250, 75);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeRect(bX - 125, bY - 80, 250, 75);
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('BUCKET #42  [Key: "apple"]', bX - 115, bY - 60);
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText('-> Candidate Pair: (REC-101, REC-504)', bX - 115, bY - 42);
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('STATUS: Pruned for distance check', bX - 115, bY - 24);
+
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.5)';
+    ctx.fillRect(bX - 125, bY + 10, 250, 60);
+    ctx.strokeStyle = '#334155';
+    ctx.strokeRect(bX - 125, bY + 10, 250, 60);
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('BUCKET #89  [Key: "microsoft"]', bX - 115, bY + 30);
+    ctx.font = '9px monospace';
+    ctx.fillText('-> Singleton: (REC-899)', bX - 115, bY + 48);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(bX - 125, bY + 82, 250, 36);
+    ctx.strokeStyle = '#10b981';
+    ctx.strokeRect(bX - 125, bY + 82, 250, 36);
+    ctx.font = '700 9px monospace';
+    ctx.fillStyle = '#34d399';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAIR REDUCTION: O(N²) → O(N · B)', bX, bY + 96);
+    ctx.fillText('99.8% UNNECESSARY CHECKS PRUNED', bX, bY + 109);
+  } else if (step === 1) {
+    const boxX = cx - 180;
+    const boxY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(boxX - 150, boxY - 130, 300, 260);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX - 150, boxY - 130, 300, 260);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('MULTI-ATTRIBUTE SIMILARITY METRICS', boxX - 135, boxY - 105);
+
+    const metrics = [
+      { name: 'Jaro-Winkler (Name)', score: 0.94, valStr: '0.94' },
+      { name: 'Jaccard Token (Address)', score: 0.88, valStr: '0.88' },
+      { name: 'Tax ID Soft-Match', score: 0.70, valStr: '0.70' },
+      { name: 'Domain Exact String', score: 1.00, valStr: '1.00' }
+    ];
+
+    metrics.forEach((m, idx) => {
+      const my = boxY - 70 + idx * 46;
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(`${m.name}: ${m.valStr}`, boxX - 135, my);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(boxX - 135, my + 6, 270, 12);
+      ctx.strokeStyle = '#334155';
+      ctx.strokeRect(boxX - 135, my + 6, 270, 12);
+
+      const barFill = m.score * 270;
+      ctx.fillStyle = m.score >= 0.85 ? '#10b981' : '#f59e0b';
+      ctx.fillRect(boxX - 135, my + 6, barFill, 12);
+    });
+
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.lineDashOffset = -localTick * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 150, boxY);
+    ctx.lineTo(cx + 80, boxY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const cX = cx + 220;
+    const cY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(cX - 140, cY - 130, 280, 260);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(cX - 140, cY - 130, 280, 260);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('DECISION TREE CLASSIFIER', cX - 125, cY - 105);
+
+    const dX = cX;
+    const dY = cY - 30;
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(dX, dY - 35);
+    ctx.lineTo(dX + 55, dY);
+    ctx.lineTo(dX, dY + 35);
+    ctx.lineTo(dX - 55, dY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = '700 9px monospace';
+    ctx.fillStyle = '#34d399';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sim > 0.82 ?', dX, dY + 3);
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('TRUE → MATCH LINK (w = 0.96)', dX, dY + 65);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cX - 120, cY + 80, 240, 36);
+    ctx.strokeStyle = '#10b981';
+    ctx.strokeRect(cX - 120, cY + 80, 240, 36);
+
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#a7f3d0';
+    ctx.fillText('PREDICTED: SAME PHYSICAL ENTITY', cX, cY + 95);
+    ctx.fillText('CONFIDENCE: 96.4% | FP RISK: <0.5%', cX, cY + 107);
+  } else {
+    const gX = cx;
+    const gY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.92)';
+    ctx.fillRect(gX - 280, gY - 130, 560, 260);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(gX - 280, gY - 130, 560, 260);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = '700 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('SYNTHESIZED CANONICAL "GOLDEN ENTITY" RECORD', gX - 260, gY - 105);
+
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+    ctx.fillRect(gX - 260, gY - 90, 520, 42);
+    ctx.strokeStyle = '#10b981';
+    ctx.strokeRect(gX - 260, gY - 90, 520, 42);
+
+    ctx.font = '700 11px monospace';
+    ctx.fillStyle = '#6ee7b7';
+    ctx.fillText('MASTER ENTITY ID: [ENT-GOLDEN-042]', gX - 245, gY - 72);
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('CANONICAL NAME: Apple Inc.', gX - 245, gY - 56);
+
+    const fields = [
+      { label: 'Canonical Address', val: '1 Infinite Loop, Cupertino, CA 95014' },
+      { label: 'Tax Identification', val: 'US-94294022 (Resolved from Rec #101)' },
+      { label: 'Domain & Web URI', val: 'https://apple.com (100% verified)' },
+      { label: 'Cluster Lineage', val: 'Merged Sources: [Rec #101 (Internal ERP), Rec #504 (Vendor CRM)]' }
+    ];
+
+    fields.forEach((f, idx) => {
+      const fy = gY - 32 + idx * 30;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(gX - 260, fy, 520, 24);
+      ctx.strokeStyle = '#334155';
+      ctx.strokeRect(gX - 260, fy, 520, 24);
+
+      ctx.font = '700 9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`${f.label}:`, gX - 250, fy + 16);
+
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(f.val, gX - 90, fy + 16);
+    });
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = '700 10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('DEDUPLICATION STATUS: 2 RECORDS → 1 GOLDEN ENTITY (RESOLVED)', gX + 260, gY + 115);
+  }
+}
+
+/* ── DOMAIN DRAWING METHOD: BIOLOGY / CELL MEMBRANE ── */
+function drawBiologyDiagram(ctx, W, H, localTick, step, node, data, themeCol) {
+  const cx = W / 2;
+  const cy = H / 2 - 15;
+
+  const topHeadY = cy - 40;
+  const botHeadY = cy + 40;
+
+  ctx.font = '700 11px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.textAlign = 'left';
+  ctx.fillText('EXTRACELLULAR FLUID [HIGH Na⁺, Cl⁻]', 30, cy - 90);
+
+  ctx.fillStyle = '#a7f3d0';
+  ctx.fillText('INTRACELLULAR CYTOPLASM [HIGH K⁺, ORGANIC ANIONS A⁻]', 30, cy + 120);
+
+  const vmX = W - 140;
+  const vmY = cy - 85;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.fillRect(vmX - 60, vmY - 25, 120, 50);
+  ctx.strokeStyle = step === 1 ? '#f59e0b' : '#06b6d4';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(vmX - 60, vmY - 25, 120, 50);
+
+  ctx.font = '700 9px monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'center';
+  ctx.fillText('MEMBRANE POTENTIAL', vmX, vmY - 8);
+
+  ctx.font = '700 14px monospace';
+  ctx.fillStyle = step === 0 ? '#38bdf8' : step === 1 ? '#f59e0b' : '#10b981';
+  ctx.fillText(step === 0 ? '-70 mV' : step === 1 ? '+30 mV (SPIKE)' : '-70 mV (RESET)', vmX, vmY + 14);
+
+  const channelLeft = cx - 55;
+  const channelRight = cx + 55;
+
+  for (let x = 40; x < W - 40; x += 18) {
+    if (x > channelLeft && x < channelRight) continue;
+
+    ctx.beginPath();
+    ctx.arc(x, topHeadY, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fill();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.stroke();
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 3, topHeadY + 7);
+    ctx.quadraticCurveTo(x - 6, topHeadY + 20, x - 3, topHeadY + 32);
+    ctx.moveTo(x + 3, topHeadY + 7);
+    ctx.quadraticCurveTo(x + 6, topHeadY + 20, x + 3, topHeadY + 32);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x, botHeadY, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fill();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x - 3, botHeadY - 7);
+    ctx.quadraticCurveTo(x - 6, botHeadY - 20, x - 3, botHeadY - 32);
+    ctx.moveTo(x + 3, botHeadY - 7);
+    ctx.quadraticCurveTo(x + 6, botHeadY - 20, x + 3, botHeadY - 32);
+    ctx.stroke();
+  }
+
+  const isOpen = (step === 1);
+  const gateOffset = isOpen ? 16 : 4;
+
+  ctx.fillStyle = '#1e3a8a';
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, channelLeft - 20, topHeadY - 20, 40 - gateOffset, 120, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  drawRoundRect(ctx, channelRight - 20 + gateOffset, topHeadY - 20, 40 - gateOffset, 120, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = '700 10px monospace';
+  ctx.fillStyle = '#e0f2fe';
+  ctx.textAlign = 'center';
+  ctx.fillText(step === 2 ? 'Na⁺/K⁺-ATPase PUMP' : 'VOLTAGE-GATED Na⁺ CHANNEL', cx, topHeadY - 28);
+
+  ctx.font = '9px monospace';
+  ctx.fillStyle = isOpen ? '#10b981' : '#f43f5e';
+  ctx.fillText(isOpen ? '[STATE: OPEN / ACTIVATED]' : '[STATE: CLOSED / INACTIVE]', cx, topHeadY - 14);
+
+  if (step === 0) {
+    for (let i = 0; i < 8; i++) {
+      const ix = 80 + i * 115 + Math.sin(localTick * 0.05 + i) * 6;
+      const iy = cy - 70 + Math.cos(localTick * 0.05 + i) * 5;
+      drawIon(ctx, ix, iy, 'Na⁺', '#f59e0b');
+    }
+    for (let i = 0; i < 7; i++) {
+      const ix = 120 + i * 125 + Math.sin(localTick * 0.05 + i * 2) * 6;
+      const iy = cy + 75 + Math.cos(localTick * 0.05 + i * 2) * 5;
+      drawIon(ctx, ix, iy, 'K⁺', '#38bdf8');
+    }
+  } else if (step === 1) {
+    for (let i = 0; i < 6; i++) {
+      const t = ((localTick * 1.5 + i * 40) % 240) / 240;
+      const ny = (topHeadY - 60) + t * 150;
+      drawIon(ctx, cx + Math.sin(t * 10) * 4, ny, 'Na⁺', '#f59e0b');
+    }
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.lineDashOffset = -localTick * 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, topHeadY - 50);
+    ctx.lineTo(cx, botHeadY + 50);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    drawIon(ctx, cx - 18, cy - 25 - (localTick % 60) * 0.5, 'Na⁺', '#f59e0b');
+    drawIon(ctx, cx - 30, cy - 20 - (localTick % 60) * 0.5, 'Na⁺', '#f59e0b');
+    drawIon(ctx, cx - 8, cy - 22 - (localTick % 60) * 0.5, 'Na⁺', '#f59e0b');
+
+    drawIon(ctx, cx + 18, cy + 15 + (localTick % 60) * 0.5, 'K⁺', '#38bdf8');
+    drawIon(ctx, cx + 30, cy + 20 + (localTick % 60) * 0.5, 'K⁺', '#38bdf8');
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '700 10px monospace';
+    ctx.fillText('ATP  →  ADP  +  Pᵢ', cx, cy + 68);
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#34d399';
+    ctx.fillText('Active Hydrolysis restores resting gradient', cx, cy + 82);
+  }
+}
+
+/* ── DOMAIN DRAWING METHOD: PHYSICS / BOHR ATOM ── */
+function drawPhysicsDiagram(ctx, W, H, localTick, step, node, data, themeCol) {
+  const cx = W / 2 - 80;
+  const cy = H / 2 - 15;
+
+  const r1 = 45, r2 = 90, r3 = 145;
+
+  [
+    { r: r1, label: 'n = 1 (Ground)' },
+    { r: r2, label: 'n = 2 (Excited)' },
+    { r: r3, label: 'n = 3 (Rydberg)' }
+  ].forEach((shell, idx) => {
+    ctx.strokeStyle = idx === 0 ? 'rgba(56, 189, 248, 0.4)' : idx === 1 ? 'rgba(56, 189, 248, 0.25)' : 'rgba(56, 189, 248, 0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, shell.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'left';
+    ctx.fillText(shell.label, cx + shell.r + 6, cy - 4);
+  });
+
+  const nucleusPulse = Math.sin(localTick * 0.1) * 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18 + nucleusPulse, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+  ctx.font = '700 10px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('+Ze', cx, cy + 4);
+
+  let curR = r1;
+  const angle = (localTick * 0.03) % (Math.PI * 2);
+
+  if (step === 0) {
+    curR = r1;
+  } else if (step === 1) {
+    curR = r3;
+  } else {
+    curR = r2;
+  }
+
+  const eX = cx + Math.cos(angle) * curR;
+  const eY = cy + Math.sin(angle) * curR;
+
+  ctx.beginPath();
+  ctx.arc(eX, eY, 9, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(eX, eY, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fill();
+
+  if (step === 1) {
+    const photonX = cx - 260 + ((localTick * 2) % 240);
+    const photonY = cy - 20;
+
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let px = -30; px <= 30; px += 2) {
+      const py = Math.sin((px * 0.3) + localTick * 0.4) * 8;
+      if (px === -30) ctx.moveTo(photonX + px, photonY + py);
+      else ctx.lineTo(photonX + px, photonY + py);
+    }
+    ctx.stroke();
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'center';
+    ctx.fillText('hν (Photon Absorption)', photonX, photonY - 14);
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx + r1, cy);
+    ctx.lineTo(cx + r3, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText('ΔE = E₃ - E₁', cx + (r1 + r3) / 2, cy - 8);
+  } else if (step === 2) {
+    const outX = cx + 80 + ((localTick * 2.2) % 220);
+    const outY = cy - 60;
+
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = -35; px <= 35; px += 2) {
+      const py = Math.sin((px * 0.3) + localTick * 0.4) * 10;
+      if (px === -35) ctx.moveTo(outX + px, outY + py);
+      else ctx.lineTo(outX + px, outY + py);
+    }
+    ctx.stroke();
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#ef4444';
+    ctx.textAlign = 'center';
+    ctx.fillText('EMITTED PHOTON: λ = 656.3 nm (H-α)', outX, outY - 16);
+  }
+
+  const ladX = W - 180;
+  const ladY = cy;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.fillRect(ladX - 90, ladY - 120, 180, 240);
+  ctx.strokeStyle = '#334155';
+  ctx.strokeRect(ladX - 90, ladY - 120, 180, 240);
+
+  ctx.font = '700 10px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.textAlign = 'center';
+  ctx.fillText('QUANTUM ENERGY LEVELS', ladX, ladY - 98);
+
+  const levels = [
+    { label: 'n = 3 (-1.51 eV)', y: ladY - 60, active: step === 1 },
+    { label: 'n = 2 (-3.40 eV)', y: ladY, active: step === 2 },
+    { label: 'n = 1 (-13.6 eV)', y: ladY + 80, active: step === 0 }
+  ];
+
+  levels.forEach((lvl) => {
+    ctx.strokeStyle = lvl.active ? '#f59e0b' : '#64748b';
+    ctx.lineWidth = lvl.active ? 3 : 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ladX - 75, lvl.y);
+    ctx.lineTo(ladX + 75, lvl.y);
+    ctx.stroke();
+
+    ctx.font = `${lvl.active ? '700' : '400'} 9px monospace`;
+    ctx.fillStyle = lvl.active ? '#fbbf24' : '#94a3b8';
+    ctx.fillText(lvl.label, ladX, lvl.y - 6);
+  });
+}
+
+/* ── DOMAIN DRAWING METHOD: SYSTEM ARCHITECTURE (GENERAL) ── */
+function drawSystemDiagram(ctx, W, H, localTick, step, node, data, themeCol) {
+  const cx = W / 2;
+  const cy = H / 2 - 15;
+  const title = String(node?.title || 'System Core');
+  const cluster = String(node?.cluster || 'Subsystem');
+
+  if (step === 0) {
+    const inX = cx - 240;
+    const inY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.9)';
+    ctx.fillRect(inX - 140, inY - 120, 280, 240);
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(inX - 140, inY - 120, 280, 240);
+
+    ctx.fillStyle = '#06b6d4';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('SIGNAL INGESTION REGISTERS', inX - 125, inY - 95);
+
+    const registers = [
+      { name: 'REG_0 [PRIMARY_PRECURSOR]', val: '0x7F2A_INIT' },
+      { name: 'REG_1 [CONTEXT_VECTOR]', val: '0x09E1_ACTIVE' },
+      { name: 'REG_2 [CONFIG_TELEMETRY]', val: '0x44B8_LOCKED' }
+    ];
+
+    registers.forEach((r, idx) => {
+      const ry = inY - 65 + idx * 55;
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.1)';
+      ctx.fillRect(inX - 125, ry, 250, 44);
+      ctx.strokeStyle = '#1e3a5f';
+      ctx.strokeRect(inX - 125, ry, 250, 44);
+
+      ctx.font = '700 9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(r.name, inX - 115, ry + 16);
+
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(`Value: ${r.val}`, inX - 115, ry + 34);
+    });
+
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.lineDashOffset = -localTick * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(inX + 140, inY);
+    ctx.lineTo(cx + 80, inY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const muxX = cx + 200;
+    const muxY = cy;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(muxX - 110, muxY - 90, 220, 180);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(muxX - 110, muxY - 90, 220, 180);
+
+    ctx.font = '700 11px monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'center';
+    ctx.fillText('BUS MULTIPLEXER', muxX, muxY - 65);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(muxX - 90, muxY - 35, 180, 100);
+    ctx.strokeStyle = '#1e293b';
+    ctx.strokeRect(muxX - 90, muxY - 35, 180, 100);
+
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('SERIALIZED STREAM', muxX, muxY - 10);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`Clock Rate: ${(localTick % 60) * 10} MHz`, muxX, muxY + 12);
+    ctx.fillText('Sync Token: 0xDEADBEEF', muxX, muxY + 32);
+    ctx.fillText('Status: STREAMING', muxX, muxY + 52);
+  } else if (step === 1) {
+    const coreW = 460;
+    const coreH = 240;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.92)';
+    ctx.fillRect(cx - coreW / 2, cy - coreH / 2, coreW, coreH);
+    ctx.strokeStyle = themeCol;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(cx - coreW / 2, cy - coreH / 2, coreW, coreH);
+
+    ctx.font = '700 12px monospace';
+    ctx.fillStyle = themeCol;
+    ctx.textAlign = 'left';
+    ctx.fillText(`TRANSFORMATION CORE: ${title.toUpperCase()}`, cx - coreW / 2 + 20, cy - coreH / 2 + 25);
+
+    const states = ['IDLE', 'TRANSFORM', 'EVALUATE', 'COMMIT'];
+    const activeStateIdx = Math.floor((localTick * 0.04) % 4);
+
+    states.forEach((s, idx) => {
+      const sx = cx - 165 + idx * 110;
+      const sy = cy - 25;
+      const isCurState = idx === activeStateIdx;
+
+      ctx.beginPath();
+      ctx.arc(sx, sy, 26, 0, Math.PI * 2);
+      ctx.fillStyle = isCurState ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.8)';
+      ctx.fill();
+      ctx.strokeStyle = isCurState ? '#38bdf8' : '#334155';
+      ctx.lineWidth = isCurState ? 2.5 : 1.5;
+      ctx.stroke();
+
+      ctx.font = '700 8px monospace';
+      ctx.fillStyle = isCurState ? '#ffffff' : '#64748b';
+      ctx.textAlign = 'center';
+      ctx.fillText(s, sx, sy + 3);
+
+      if (idx < states.length - 1) {
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(sx + 26, sy);
+        ctx.lineTo(sx + 84, sy);
+        ctx.stroke();
+      }
+    });
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cx - 180, cy + 45, 360, 20);
+    ctx.strokeStyle = '#1e293b';
+    ctx.strokeRect(cx - 180, cy + 45, 360, 20);
+
+    const progressFill = ((localTick * 1.5) % 360);
+    ctx.fillStyle = themeCol;
+    ctx.fillRect(cx - 180, cy + 45, progressFill, 20);
+
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(`PIPELINE EXECUTION: ${Math.round((progressFill / 360) * 100)}% COMPLETE`, cx, cy + 59);
+
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`Domain Subsystem: ${cluster}`, cx, cy + 90);
+  } else {
+    const outX = cx;
+    const outY = cy;
+
+    ctx.fillStyle = 'rgba(11, 19, 36, 0.92)';
+    ctx.fillRect(outX - 250, outY - 120, 500, 240);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(outX - 250, outY - 120, 500, 240);
+
+    ctx.font = '700 12px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.textAlign = 'left';
+    ctx.fillText('DISPATCH TERMINAL & ARTIFACT SYNTHESIS', outX - 230, outY - 95);
+
+    const outputs = [
+      { tag: 'VERIFIED_ARTIFACT_01', detail: 'Hash Digest CRC32: [PASS - 0x8FA19230]', valid: true },
+      { tag: 'STATE_BUS_PROPAGATION', detail: 'Broadcasting to subscriber channels on port 5173', valid: true },
+      { tag: 'INTEGRITY_AUDIT_LOG', detail: 'Zero constraint violations detected across execution trace', valid: true }
+    ];
+
+    outputs.forEach((o, idx) => {
+      const oy = outY - 65 + idx * 55;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      ctx.fillRect(outX - 230, oy, 460, 44);
+      ctx.strokeStyle = '#065f46';
+      ctx.strokeRect(outX - 230, oy, 460, 44);
+
+      ctx.font = '700 10px monospace';
+      ctx.fillStyle = '#34d399';
+      ctx.fillText(o.tag, outX - 215, oy + 16);
+
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(o.detail, outX - 215, oy + 34);
+    });
+
+    ctx.font = '700 10px monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.textAlign = 'right';
+    ctx.fillText('STATUS: EXECUTION CYCLE COMPLETED WITH SUCCESS', outX + 230, outY + 105);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
    COMPONENT: Explanation2DWorld
 ───────────────────────────────────────────────────────────── */
 export default function Explanation2DWorld({
@@ -318,6 +1602,14 @@ export default function Explanation2DWorld({
       themeColor: '#38bdf8'
     };
   }, [nodes, selectedNodeId, data]);
+
+  const diagramDomain = useMemo(() => {
+    return detectDiagramDomain(selectedNode, data);
+  }, [selectedNode, data]);
+
+  const domainStages = useMemo(() => {
+    return getDomainStages(diagramDomain, selectedNode, data);
+  }, [diagramDomain, selectedNode, data]);
 
   /* ─────────────────────────────────────────────────────────────
      CANVAS INTERACTION: PAN, ZOOM, DRAG & CLICK
@@ -908,9 +2200,8 @@ export default function Explanation2DWorld({
         const nodeCluster = String(selectedNode?.cluster || 'Core Topic');
         const nodeExplanation = String(selectedNode?.explanation || 'Operational mechanism active.');
 
-        // Dynamic Diagram for Selected Concept
-        const cx = W / 2;
-        const cy = H / 2 - 25;
+        const domain = diagramDomain;
+        const curStageObj = domainStages[diagramStep] || domainStages[0];
 
         // Header Telemetry
         ctx.font = '700 13px "Space Grotesk", sans-serif';
@@ -919,121 +2210,23 @@ export default function Explanation2DWorld({
         ctx.fillText(`CONCEPT ARCHITECTURE: ${nodeTitle.toUpperCase()}`, 25, 30);
         ctx.font = '11px monospace';
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText(`${nodeCluster}  |  ACTIVE STEP: [STAGE ${diagramStep + 1}]  |  CYCLE: ${(localTick % 1000)}`, 25, 48);
+        ctx.fillText(`${nodeCluster}  |  DOMAIN: [${domain.toUpperCase()}]  |  [STAGE ${diagramStep + 1}: ${curStageObj.stage.toUpperCase()}]  |  CYCLE: ${(localTick % 1000)}`, 25, 48);
 
-        // Left Input Panel
-        const inX = cx - 280;
-        const inY = cy;
-        ctx.fillStyle = diagramStep === 0 ? 'rgba(6, 182, 212, 0.15)' : '#0b1324';
-        ctx.fillRect(inX - 70, inY - 70, 140, 140);
-        ctx.strokeStyle = diagramStep === 0 ? '#22d3ee' : '#1e293b';
-        ctx.lineWidth = diagramStep === 0 ? 2.5 : 1.5;
-        ctx.strokeRect(inX - 70, inY - 70, 140, 140);
-
-        ctx.font = '700 10px monospace';
-        ctx.fillStyle = diagramStep === 0 ? '#22d3ee' : '#64748b';
-        ctx.textAlign = 'center';
-        ctx.fillText('INPUT SIGNALS', inX, inY - 50);
-
-        ['Raw Precursor', 'Config Param', 'Signal State'].forEach((lbl, idx) => {
-          const py = inY - 20 + idx * 26;
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(inX - 58, py - 9, 116, 18);
-          ctx.strokeStyle = '#334155';
-          ctx.strokeRect(inX - 58, py - 9, 116, 18);
-          ctx.font = '9px monospace';
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillText(lbl, inX, py + 3);
-        });
-
-        // Conduit to Core
-        ctx.strokeStyle = diagramStep === 0 ? '#22d3ee' : 'rgba(56, 189, 248, 0.35)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.lineDashOffset = -localTick * 0.9;
-        ctx.beginPath();
-        ctx.moveTo(inX + 70, inY);
-        ctx.lineTo(cx - 150, inY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Center Core
-        const coreW = 290;
-        const coreH = 170;
-        ctx.fillStyle = diagramStep === 1 ? 'rgba(15, 23, 42, 0.95)' : '#070f1e';
-        ctx.fillRect(cx - coreW / 2, cy - coreH / 2, coreW, coreH);
-        ctx.strokeStyle = diagramStep === 1 ? themeCol : '#224060';
-        ctx.lineWidth = diagramStep === 1 ? 3 : 1.5;
-        ctx.strokeRect(cx - coreW / 2, cy - coreH / 2, coreW, coreH);
-
-        ctx.font = '700 12px "Space Grotesk", sans-serif';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(nodeTitle, cx, cy - 60);
-
-        // Waves inside core
-        ctx.strokeStyle = diagramStep === 1 ? 'rgba(34, 211, 238, 0.8)' : 'rgba(71, 85, 105, 0.4)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (let x = cx - 110; x <= cx + 110; x += 4) {
-          const yOffset = Math.sin((x * 0.05) + (localTick * 0.1)) * (diagramStep === 1 ? 18 : 8);
-          if (x === cx - 110) ctx.moveTo(x, cy - 10 + yOffset);
-          else ctx.lineTo(x, cy - 10 + yOffset);
+        // Dispatch to domain-specific scientific / technical diagrams
+        if (domain === 'chemistry') {
+          drawChemistryDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
+        } else if (domain === 'data_pipeline') {
+          drawDataPipelineDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
+        } else if (domain === 'biology') {
+          drawBiologyDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
+        } else if (domain === 'physics') {
+          drawPhysicsDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
+        } else {
+          drawSystemDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
         }
-        ctx.stroke();
 
-        // Gauges
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(cx - 110, cy + 22, 220, 16);
-        ctx.strokeStyle = '#1e293b';
-        ctx.strokeRect(cx - 110, cy + 22, 220, 16);
-
-        const progressFill = ((localTick * 1.2) % 220);
-        ctx.fillStyle = themeCol;
-        ctx.fillRect(cx - 110, cy + 22, progressFill, 16);
-
-        ctx.font = '9px monospace';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`EXECUTION STATUS: ${Math.round((progressFill / 220) * 100)}%`, cx, cy + 34);
-
-        // Right Output Panel
-        const outX = cx + 280;
-        const outY = cy;
-
-        ctx.strokeStyle = diagramStep === 2 ? '#10b981' : 'rgba(56, 189, 248, 0.35)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.lineDashOffset = -localTick * 0.9;
-        ctx.beginPath();
-        ctx.moveTo(cx + 150, outY);
-        ctx.lineTo(outX - 70, outY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = diagramStep === 2 ? 'rgba(16, 185, 129, 0.15)' : '#0b1324';
-        ctx.fillRect(outX - 70, outY - 70, 140, 140);
-        ctx.strokeStyle = diagramStep === 2 ? '#10b981' : '#1e293b';
-        ctx.lineWidth = diagramStep === 2 ? 2.5 : 1.5;
-        ctx.strokeRect(outX - 70, outY - 70, 140, 140);
-
-        ctx.font = '700 10px monospace';
-        ctx.fillStyle = diagramStep === 2 ? '#10b981' : '#64748b';
-        ctx.textAlign = 'center';
-        ctx.fillText('DISPATCH TERMINAL', outX, outY - 50);
-
-        ['Verified Output', 'State Bus', 'Downstream Pipe'].forEach((lbl, idx) => {
-          const py = outY - 20 + idx * 26;
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(outX - 58, py - 9, 116, 18);
-          ctx.strokeStyle = '#334155';
-          ctx.strokeRect(outX - 58, py - 9, 116, 18);
-          ctx.font = '9px monospace';
-          ctx.fillStyle = '#a7f3d0';
-          ctx.fillText(lbl, outX, py + 3);
-        });
-
-        // Bottom Banner
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        // Bottom Banner with Dynamic Domain Stage & Explanation
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
         ctx.fillRect(25, H - 75, W - 50, 55);
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
         ctx.strokeRect(25, H - 75, W - 50, 55);
@@ -1042,11 +2235,11 @@ export default function Explanation2DWorld({
         ctx.fillStyle = themeCol;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`STAGE ${diagramStep + 1}: ${diagramStep === 0 ? 'Input Verification' : diagramStep === 1 ? 'Algorithmic Transformation' : 'Output Confirmation'}`, 40, H - 68);
+        ctx.fillText(curStageObj.stage.toUpperCase(), 40, H - 68);
 
         ctx.font = '11px sans-serif';
         ctx.fillStyle = '#cbd5e1';
-        ctx.fillText(nodeExplanation, 40, H - 48);
+        ctx.fillText(curStageObj.detail || nodeExplanation, 40, H - 48);
       } catch (err) {
         console.warn('Diagram render catch:', err);
       }
@@ -1060,7 +2253,7 @@ export default function Explanation2DWorld({
       running = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [activeTab, selectedNode, diagramStep, isSimulating, simulationSpeed]);
+  }, [activeTab, selectedNode, diagramStep, isSimulating, simulationSpeed, diagramDomain, domainStages, data]);
 
   /* ─────────────────────────────────────────────────────────────
      JSX RETURN: 2D DIAGRAM EXPLANATION
@@ -1192,20 +2385,7 @@ export default function Explanation2DWorld({
 
             {/* Steps List */}
             <div className="space-y-2">
-              {[
-                {
-                  stage: 'Stage 1: Input Ingestion',
-                  detail: `Prerequisites and input signals initialized for ${selectedNode?.title || 'core concept'}.`
-                },
-                {
-                  stage: 'Stage 2: Core Transformation',
-                  detail: selectedNode?.explanation || 'Transformation active.'
-                },
-                {
-                  stage: 'Stage 3: Output Delivery',
-                  detail: 'Artifacts and signals verified and transmitted downstream.'
-                }
-              ].map((st, idx) => {
+              {domainStages.map((st, idx) => {
                 const isStepActive = diagramStep === idx;
                 return (
                   <div
