@@ -2368,7 +2368,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                 </section>
 
                 {/* ── RIGHT: GENERATION TARGET ── */}
-                <section className="flex min-w-0 flex-col text-left" style={{ minHeight: 0 }}>
+                <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto pr-2 text-left">
                   <div className="mb-2.5 flex items-center justify-between">
                     <div className="font-pixel text-cyan-200 uppercase" style={{ fontSize: '15px', letterSpacing: '0.22em' }}>
                       <span className="text-cyan-400">╱╱</span> CHOOSE GENERATION TARGET
@@ -2457,7 +2457,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                   )}
 
                   {/* CTA: ANALYSE NOTES */}
-                  <div className="mt-auto pt-4">
+                  <div className="mt-auto shrink-0 pt-4">
                     <button
                       onClick={handleAnalyse}
                       disabled={isProcessing || (!file && !documentId)}
