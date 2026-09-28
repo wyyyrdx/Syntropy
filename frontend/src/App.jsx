@@ -123,7 +123,6 @@ function readStoredAuth() {
 
     return session;
   } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
 }
