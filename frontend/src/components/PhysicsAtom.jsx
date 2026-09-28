@@ -553,11 +553,6 @@ export default function PhysicsAtom({ onSelectRealm, activeRealmId }) {
         </div>
       </div>
 
-      <div className="mt-2 text-center text-[9px] sm:text-[10px] font-mono text-cyan-400/90 bg-slate-900/90 px-3 py-1.5 border border-cyan-500/30 rounded flex items-center justify-center gap-1.5 max-w-sm">
-        <span className="text-amber-400 font-pixel text-[8px] animate-pulse">●</span>
-        <span>DRAG TO ORBIT • CLICK TO EXPLORE</span>
-      </div>
-
       <div className="w-full max-w-5xl mt-4 sm:mt-5">
         <div className="font-pixel text-[10px] sm:text-[11px] text-slate-300 mb-2.5 flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -572,27 +567,38 @@ export default function PhysicsAtom({ onSelectRealm, activeRealmId }) {
             return (
               <button
                 key={realm.id}
-                onClick={() => startWarp(realm)}
-                className={`p-3.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[88px] ${
-                  isActive
-                    ? 'bg-sky-950/40 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.3)] ring-1 ring-sky-400/50'
-                    : 'bg-[#090f1d]/90 border-[#19263e] hover:border-sky-400/60 hover:bg-[#0d162a] hover:shadow-[0_0_12px_rgba(56,189,248,0.2)]'
+                onClick={() => {
+                  retroAudio.playInteract();
+                  startWarp(realm);
+                }}
+                className={`btn-pixel-card p-3 sm:p-3.5 min-h-[84px] group ${
+                  isActive ? 'btn-pixel-card-active' : ''
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl filter drop-shadow">{realm.npc.avatar}</span>
-                    <span className="font-mono text-[11px] text-sky-300/90 tracking-wider font-semibold uppercase px-2 py-0.5 rounded bg-sky-950/60 border border-sky-500/30">
+                <div className="flex items-center justify-between gap-2 mb-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span
+                      className={`text-[9px] font-pixel tracking-wider uppercase px-2 py-0.5 border ${
+                        isActive
+                          ? 'bg-amber-950/80 border-amber-300 text-amber-200'
+                          : 'bg-slate-900/90 border-slate-600 text-slate-300'
+                      }`}
+                    >
                       {realm.region}
                     </span>
                   </div>
                   {isActive && (
-                    <span className="font-mono text-[10px] text-sky-300 font-bold uppercase px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 animate-pulse">
+                    <span className="text-[9px] font-pixel text-amber-200 font-bold uppercase px-2 py-0.5 border border-amber-300 bg-amber-950 shadow-[1px_1px_0px_#000] animate-pulse">
                       ACTIVE
                     </span>
                   )}
                 </div>
-                <div className="font-mono text-sm font-bold text-slate-100 group-hover:text-sky-200 transition-colors leading-snug">
+                <div
+                  className={`font-pixel text-[10px] sm:text-[11px] leading-snug tracking-wide uppercase ${
+                    isActive ? 'text-white' : 'text-slate-100 group-hover:text-amber-200'
+                  }`}
+                >
                   {realm.name}
                 </div>
               </button>

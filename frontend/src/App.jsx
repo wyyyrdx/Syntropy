@@ -53,6 +53,48 @@ import PhysicsWorld from './components/PhysicsWorld';
 import PhysicsBookSelector from './components/PhysicsBookSelector';
 import { PHYSICS_REALMS } from './data/physicsRealms';
 
+/* ─────────────────────────────────────────────
+   GLOBAL APP ERROR BOUNDARY
+───────────────────────────────────────────── */
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[AppErrorBoundary] Caught error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#060911] text-center space-y-4">
+          <div className="p-6 rounded-lg bg-[#080d19] border-2 border-cyan-400 max-w-lg shadow-[0_0_30px_rgba(6,182,212,0.3)] space-y-3">
+            <p className="font-mono text-cyan-300 text-sm font-bold">[ SYSTEM INTERRUPT RECOVERED ]</p>
+            <p className="font-mono text-slate-300 text-xs">
+              {this.state.error?.message || 'A render exception occurred.'}
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.reload();
+                }}
+                className="px-4 py-2 rounded bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-mono text-xs font-black uppercase cursor-pointer"
+              >
+                REBOOT CONSOLE
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   // Navigation State: 'upload' | 'biology' | 'physics' | 'history' | 'geography'
   const [activeSpace, setActiveSpace] = useState('upload');
@@ -374,7 +416,8 @@ export default function App() {
         {/* =========================================================
             ACTIVE SPACE VIEWPORT (ALL RENDERED IN SAME PAGE)
             ========================================================= */}
-        <div className="flex-1 flex flex-col overflow-y-auto bg-[#060911]">
+        <AppErrorBoundary>
+          <div className="flex-1 flex flex-col overflow-y-auto bg-[#060911]">
           {/* ==================== 1. UPLOAD NOTES TERMINAL ==================== */}
           {activeSpace === 'upload' && (
             <Dashboard
@@ -924,6 +967,7 @@ export default function App() {
             </div>
           )}
         </div>
+        </AppErrorBoundary>
       </div>
 
       {/* Floating XP Toast Notification */}

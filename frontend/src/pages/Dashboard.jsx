@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   Upload,
   BookOpen,
@@ -22,11 +22,53 @@ import {
   Globe2,
   Dna,
   Atom,
-  Landmark
+  Landmark,
+  Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { retroAudio } from '../audio/retroAudio';
 import { api } from '../api';
+import ConceptGraphWorld from '../components/ConceptGraphWorld';
+import Explanation2DWorld from '../components/Explanation2DWorld';
+import BiologyWorld from '../components/BiologyWorld';
+
+/* ─────────────────────────────────────────────
+   VISUAL ERROR BOUNDARY
+   Protects against canvas/WebGL/render exceptions
+───────────────────────────────────────────── */
+class VisualErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[VisualErrorBoundary] Caught error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback || (
+          <div className="p-6 rounded-lg bg-[#080d19] border border-cyan-500/40 text-center space-y-3">
+            <p className="font-mono text-cyan-300 text-sm font-bold">[ 2D SCHEMATICS RELOADING ]</p>
+            <p className="font-mono text-slate-400 text-xs">
+              {this.state.error?.message || 'Recovering view state...'}
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 rounded bg-cyan-500 text-black font-mono text-xs font-bold cursor-pointer hover:bg-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+            >
+              RELOAD 2D SCHEMATICS
+            </button>
+          </div>
+        )
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /* ─────────────────────────────────────────────
    INTERNAL QUIZ MODAL  (standalone, for Dashboard)
@@ -768,11 +810,119 @@ function generateUploadedSynthesis(file, textContent) {
 }
 
 /* ─────────────────────────────────────────────
+   PLAYABLE 2D REALM GENERATOR FOR UPLOADED NOTES
+───────────────────────────────────────────── */
+function buildPlayableRealm(data) {
+  const title = data?.subject_title || data?.title || data?.world?.name || 'Knowledge Realm';
+  const nodes = Array.isArray(data?.nodes) && data.nodes.length > 0
+    ? data.nodes
+    : (Array.isArray(data?.concepts) && data.concepts.length > 0 ? data.concepts : []);
+  const questions = Array.isArray(data?.questions) ? data.questions : [];
+
+  const coords = [
+    { x: 7, y: 4 },
+    { x: 14, y: 4 },
+    { x: 20, y: 8 },
+    { x: 16, y: 15 },
+    { x: 7, y: 15 },
+    { x: 12, y: 10 },
+    { x: 19, y: 3 },
+  ];
+
+  const icons = ['🧪', '⚛️', '🧬', '⚡', '🔬', '💡', '🌟', '📖'];
+
+  const sourceNodes = (nodes.length > 0 ? nodes : [
+    { node_id: 'node_1', title: 'Core Foundations', explanation: 'Primary foundational concept extracted from your notes.', suggested_cluster: 'Foundations' },
+    { node_id: 'node_2', title: 'Operational Mechanisms', explanation: 'Sequential reactions and catalytic pathways.', suggested_cluster: 'Mechanisms' },
+    { node_id: 'node_3', title: 'Testing & Verification', explanation: 'Qualitative diagnostics and verification procedures.', suggested_cluster: 'Analysis' }
+  ]);
+
+  const landmarks = sourceNodes.slice(0, 7).map((node, idx) => {
+    const coord = coords[idx % coords.length];
+    const nodeId = String(node.node_id || node.id || `node_${idx}`);
+    const nodeTitle = node.title || node.name || `Station ${idx + 1}`;
+    const explanation = node.explanation || node.definition || 'Key concept from your notes.';
+    const category = node.suggested_cluster || node.cluster || 'Core Topic';
+    const icon = icons[idx % icons.length];
+
+    const linkedQ = questions.find(q => q.linked_node_id === nodeId) || questions[idx] || null;
+
+    let quizObj;
+    if (linkedQ) {
+      quizObj = {
+        id: `realm_quiz_${nodeId}`,
+        question: linkedQ.question_text || linkedQ.question || `What is the core principle of ${nodeTitle}?`,
+        options: (linkedQ.options && linkedQ.options.length > 0)
+          ? linkedQ.options.map(o => ({ id: o.id, text: o.text }))
+          : [
+            { id: 'A', text: explanation.substring(0, 60) },
+            { id: 'B', text: 'Alternative contradictory hypothesis' },
+            { id: 'C', text: 'Inactive auxiliary parameter' },
+            { id: 'D', text: 'Non-applicable baseline measurement' }
+          ],
+        correct: linkedQ.correct_option_id || linkedQ.correct || 'A',
+        explanation: linkedQ.explanation || explanation
+      };
+    } else {
+      quizObj = {
+        id: `realm_quiz_${nodeId}`,
+        question: node.recallPrompt || `What is the core role of ${nodeTitle}?`,
+        options: [
+          { id: 'A', text: explanation.substring(0, 60) },
+          { id: 'B', text: 'Alternative contradictory hypothesis' },
+          { id: 'C', text: 'Inactive auxiliary variable' },
+          { id: 'D', text: 'Non-applicable baseline measurement' }
+        ],
+        correct: 'A',
+        explanation: explanation
+      };
+    }
+
+    return {
+      id: nodeId,
+      name: nodeTitle,
+      icon,
+      x: coord.x,
+      y: coord.y,
+      category,
+      fact: explanation,
+      quiz: quizObj
+    };
+  });
+
+  return {
+    id: `realm_${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`,
+    name: title,
+    region: 'Notes Ingestion Sector',
+    biome: data?.world?.theme || 'Syntropy Cyber Realm',
+    elevation: 'SECTOR 01',
+    themeColor: '#06b6d4',
+    description: data?.summary || data?.raw_transcription || 'Explore your synthesized notes realm and master every concept.',
+    npc: {
+      name: 'Syntropy Overseer',
+      title: 'Neural Guide',
+      avatar: '🤖',
+      dialogue: `Welcome to the ${title} 2D Realm! Walk around using Arrow Keys or WASD, approach concept stations, and press SPACE or click to test your recall!`
+    },
+    mapConfig: {
+      width: 24,
+      height: 20,
+      baseTile: 'plant_floor',
+      riverStyle: 'life_stream',
+      playerStart: { x: 3, y: 10 }
+    },
+    landmarks
+  };
+}
+
+/* ─────────────────────────────────────────────
    MAIN DASHBOARD COMPONENT
 ───────────────────────────────────────────── */
 export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, onAwardXP }) {
   // ── Generation Target ──
   const [selectedTarget, setSelectedTarget] = useState('graph');
+  const [graphViewMode, setGraphViewMode] = useState('canvas');
+  const [explanationSubView, setExplanationSubView] = useState('diagram');
 
   // ── File Upload ──
   const [file, setFile] = useState(null);
@@ -796,6 +946,83 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [nodeQuizTarget, setNodeQuizTarget] = useState(null); // node for single-recall modal
   const [questQuizIdx, setQuestQuizIdx] = useState(null);    // quest index to quiz
+  const [activeRealmQuiz, setActiveRealmQuiz] = useState(null); // realm landmark active quiz
+
+  // ── Playable 2D Realm memoized from generation result ──
+  const playableRealm = useMemo(() => {
+    if (!generationResult) return null;
+    return buildPlayableRealm(generationResult);
+  }, [generationResult]);
+
+  // ── Landmark Quiz handler ──
+  const handleOpenRealmQuiz = useCallback((quiz) => {
+    try { retroAudio?.playBlip?.(); } catch {}
+    if (!quiz) return;
+    const formatted = {
+      question_id: quiz.id || `q_${Date.now()}`,
+      question_text: quiz.question,
+      options: quiz.options || [
+        { id: 'A', text: 'Option A' },
+        { id: 'B', text: 'Option B' }
+      ],
+      correct_option_id: quiz.correct || 'A',
+      explanation: quiz.explanation || ''
+    };
+    setActiveRealmQuiz(formatted);
+  }, []);
+
+  // ── Direct 2D Realm launcher from upload terminal ──
+  const handleLaunchDirectRealm = useCallback(() => {
+    try { retroAudio?.playWarp?.(); } catch {}
+    setSelectedTarget('rpg');
+    if (!generationResult) {
+      const baseData = file ? generateUploadedSynthesis(file, fileTextContent) : {
+        subject_title: 'Organic Chemistry: Alkenes Preparation & Properties',
+        raw_transcription: 'Acid catalyzed dehydration of alcohols with concentrated H2SO4 forms Alkenes with elimination of water molecule (beta-elimination). Addition reactions include catalytic hydrogenation across double bonds with Ni catalyst and Bromine test for unsaturation (discharge of reddish-orange color).',
+        nodes: [
+          { node_id: 'acidic_dehydration', title: 'Acidic Dehydration of Alcohols', explanation: 'Heating alcohols with concentrated H2SO4 eliminates a water molecule to form alkenes via beta-elimination.', importance: 'primary', suggested_cluster: 'Synthesis' },
+          { node_id: 'beta_elimination', title: 'Beta-Elimination Reaction', explanation: 'Mechanistic reaction removing atoms from adjacent carbon centers to yield a stable pi double bond.', importance: 'secondary', suggested_cluster: 'Mechanisms' },
+          { node_id: 'addition_reactions', title: 'Addition Reactions of Alkenes', explanation: 'Characteristic electrophilic additions across carbon-carbon double bonds breaking the pi bond.', importance: 'primary', suggested_cluster: 'Properties' },
+          { node_id: 'hydrogenation', title: 'Catalytic Hydrogenation', explanation: 'Addition of H2 across an alkene using Nickel or Palladium catalyst at elevated temperatures to yield alkanes.', importance: 'secondary', suggested_cluster: 'Reactions' },
+          { node_id: 'test_for_unsaturation', title: 'Bromine Test for Unsaturation', explanation: 'Rapid discharge of reddish-orange Br2 in CCl4 solvent confirms presence of double or triple carbon bonds.', importance: 'tertiary', suggested_cluster: 'Qualitative Tests' }
+        ],
+        edges: [
+          { source_id: 'acidic_dehydration', target_id: 'beta_elimination', relationship_type: 'is an example of' },
+          { source_id: 'addition_reactions', target_id: 'hydrogenation', relationship_type: 'includes' },
+          { source_id: 'addition_reactions', target_id: 'test_for_unsaturation', relationship_type: 'demonstrated by' }
+        ],
+        questions: [
+          {
+            question_id: 'q1',
+            linked_node_id: 'test_for_unsaturation',
+            question_text: 'What visual change signifies a positive test for unsaturation using Br2 in CCl4?',
+            options: [
+              { id: 'A', text: 'Formation of a dense white precipitate' },
+              { id: 'B', text: 'Discharge of the reddish-orange color' },
+              { id: 'C', text: 'Rapid evolution of hydrogen gas' },
+              { id: 'D', text: 'Turns deep violet under heat' }
+            ],
+            correct_option_id: 'B',
+            explanation: 'Bromine rapidly adds across unsaturated pi-bonds, discharging its signature reddish-orange hue.'
+          },
+          {
+            question_id: 'q2',
+            linked_node_id: 'acidic_dehydration',
+            question_text: 'In acid-catalyzed dehydration of alcohols, what small molecule is eliminated?',
+            options: [
+              { id: 'A', text: 'Water (H2O)' },
+              { id: 'B', text: 'Carbon Dioxide (CO2)' },
+              { id: 'C', text: 'Ammonia (NH3)' },
+              { id: 'D', text: 'Hydrogen Gas (H2)' }
+            ],
+            correct_option_id: 'A',
+            explanation: 'Dehydration involves the removal of -H and -OH from adjacent carbons, forming water (H2O).'
+          }
+        ]
+      };
+      setGenerationResult(baseData);
+    }
+  }, [file, fileTextContent, generationResult]);
 
   // ── History (upload sessions) ──
   const [history, setHistory] = useState(() => {
@@ -803,6 +1030,50 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
   });
 
   const playBlip = () => { try { retroAudio?.playBlip?.(); } catch {} };
+
+  // ── Normalized Explanation Data for 2D Schematics & Dossier ──
+  const explanationData = useMemo(() => {
+    if (!generationResult) return null;
+    const title = generationResult.title || generationResult.subject_title || generationResult.world?.name || 'Study Dossier';
+    const summary = generationResult.summary || generationResult.raw_transcription || 'Conceptual synthesis active.';
+    const nodes = Array.isArray(generationResult.nodes) ? generationResult.nodes : [];
+
+    let concepts = Array.isArray(generationResult.concepts) ? generationResult.concepts : [];
+    if (concepts.length === 0 && nodes.length > 0) {
+      concepts = nodes.map((n, i) => ({
+        id: n.node_id || n.id || `concept_${i}`,
+        name: n.title || n.name || `Concept ${i + 1}`,
+        definition: n.explanation || n.definition || '',
+        importance: n.importance || 'primary',
+        cluster: n.suggested_cluster || n.cluster || 'Core Topics',
+        recall_prompt: n.recallPrompt || n.recall_prompt || ''
+      }));
+    }
+
+    let relationships = Array.isArray(generationResult.relationships) ? generationResult.relationships : [];
+    if (relationships.length === 0 && Array.isArray(generationResult.edges)) {
+      relationships = generationResult.edges.map(e => ({
+        from: e.source_id,
+        to: e.target_id,
+        type: e.relationship_type
+      }));
+    }
+
+    let key_takeaways = Array.isArray(generationResult.key_takeaways) ? generationResult.key_takeaways : [];
+    if (key_takeaways.length === 0 && nodes.length > 0) {
+      key_takeaways = nodes.slice(0, 4).map(n => `${n.title}: ${n.explanation}`);
+    }
+
+    return {
+      ...generationResult,
+      title,
+      summary,
+      concepts,
+      relationships,
+      key_takeaways,
+      nodes
+    };
+  }, [generationResult]);
 
   // ── Persist history ──
   const addToHistory = useCallback((item) => {
@@ -1207,6 +1478,15 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
         />
       )}
 
+      {/* Realm Landmark Quiz Modal */}
+      {activeRealmQuiz && (
+        <DashboardQuizModal
+          questions={[activeRealmQuiz]}
+          onClose={() => setActiveRealmQuiz(null)}
+          onAwardXP={onAwardXP}
+        />
+      )}
+
       {/* ── HEADER BANNER (CENTERED WITH BALANCED HUD WINGS) ── */}
       <div className="p-4 sm:p-5 bg-[#070d1c]/90 border border-cyan-500/30 rounded-lg shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col items-center justify-center text-center relative overflow-hidden">
         <div className="w-full flex items-center justify-center gap-4 relative z-10">
@@ -1272,404 +1552,553 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Test Recall */}
               {generationResult.questions?.length > 0 && (
                 <button
                   onClick={() => { playBlip(); setShowQuizModal(true); }}
-                  className="px-3.5 py-2 rounded bg-amber-500/20 border border-amber-400 text-amber-300 hover:bg-amber-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] cursor-pointer font-mono"
+                  className="px-2.5 py-1.5 rounded bg-amber-500/20 border border-amber-400 text-amber-300 hover:bg-amber-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] cursor-pointer font-mono"
                 >
-                  <HelpCircle className="w-4 h-4" />
-                  <span>⚔ TEST RECALL ({generationResult.questions.length})</span>
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>TEST RECALL ({generationResult.questions.length})</span>
                 </button>
               )}
 
-              {/* Enter Biology Realm */}
+              {/* 2D Realm Quick Toggle (Made Smaller) */}
               <button
-                onClick={() => handleEnterRealm('biology')}
-                className="px-3.5 py-2 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 hover:bg-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] cursor-pointer font-mono"
+                onClick={() => { playBlip(); setSelectedTarget('rpg'); }}
+                className={`px-2.5 py-1.5 rounded text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer font-mono ${
+                  selectedTarget === 'rpg'
+                    ? 'bg-amber-500 text-black border border-amber-300 font-black shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                    : 'bg-amber-500/20 border border-amber-400/80 text-amber-300 hover:bg-amber-500/30'
+                }`}
               >
-                <Map className="w-4 h-4" />
-                <span>ENTER BIOLOGY REALM</span>
+                <Compass className="w-3.5 h-3.5" />
+                <span>2D REALM</span>
               </button>
 
-              {/* Upload another */}
+              {/* Enter Biology Lab */}
+              <button
+                onClick={() => handleEnterRealm('biology')}
+                className="px-2.5 py-1.5 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 hover:bg-cyan-500/30 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer font-mono"
+              >
+                <Map className="w-3.5 h-3.5" />
+                <span>BIOLOGY LAB</span>
+              </button>
+
+              {/* Analyse Notes / Upload Another */}
               <button
                 onClick={() => { playBlip(); setGenerationResult(null); setFile(null); setFilePreview(null); setDocumentId(null); }}
-                className="px-3 py-2 rounded bg-[#0f172a] border border-slate-700 hover:border-slate-500 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer font-mono"
+                className="px-2.5 py-1.5 rounded bg-cyan-950/40 border border-cyan-400 text-cyan-300 hover:bg-cyan-900/60 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)]"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>UPLOAD ANOTHER</span>
+                <Upload className="w-3.5 h-3.5" />
+                <span>ANALYSE NOTES</span>
               </button>
             </div>
           </div>
 
+          {/* ── Mode Selection Navigation Tabs ── */}
+          <div className="flex items-center justify-between bg-[#080d19] p-2 rounded-lg border border-[#192742]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { playBlip(); setSelectedTarget('explanation'); }}
+                className={`px-3 py-1 rounded font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedTarget === 'explanation'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <BookOpen className="w-3 h-3 text-cyan-400" />
+                <span>2D EXPLANATION</span>
+              </button>
+
+              <button
+                onClick={() => { playBlip(); setSelectedTarget('graph'); }}
+                className={`px-3 py-1 rounded font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedTarget === 'graph'
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Network className="w-3 h-3 text-cyan-400" />
+                <span>GRAPH STRUCTURE</span>
+              </button>
+
+              <button
+                onClick={() => { playBlip(); setSelectedTarget('rpg'); }}
+                className={`px-3 py-1 rounded font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  selectedTarget === 'rpg'
+                    ? 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Compass className="w-3 h-3 text-amber-400" />
+                <span>2D REALM</span>
+              </button>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 font-mono text-xs text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>SYNTHESIZED REALM ACTIVE</span>
+            </div>
+          </div>
+
           {/* ═══════════════════════════════════════
-              MODE 1 — EXPLANATION DOSSIER
+              MODE 1 — 2D EXPLANATION & DIAGRAMS
           ═══════════════════════════════════════ */}
           {selectedTarget === 'explanation' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-              <div className="lg:col-span-2 space-y-4">
-                {/* Summary */}
-                <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold uppercase">
+            <VisualErrorBoundary>
+              <div className="space-y-4">
+              {/* Sub-view toggle between 2D Diagram Explanation & Structured Dossier */}
+              <div className="flex items-center justify-between bg-[#080d19] p-2.5 rounded-lg border border-[#192742]">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => { playBlip(); setExplanationSubView('diagram'); }}
+                    className={`px-4 py-2 rounded font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      explanationSubView === 'diagram'
+                        ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4 text-cyan-400" />
+                    <span>2D DIAGRAM EXPLANATION</span>
+                  </button>
+
+                  <button
+                    onClick={() => { playBlip(); setExplanationSubView('dossier'); }}
+                    className={`px-4 py-2 rounded font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      explanationSubView === 'dossier'
+                        ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
                     <FileText className="w-4 h-4" />
-                    <span>Executive Concept Summary</span>
-                  </div>
-                  <p className="text-sm text-slate-200 leading-relaxed font-sans">
-                    {generationResult.summary}
-                  </p>
+                    <span>STUDY DOSSIER &amp; NOTES</span>
+                  </button>
                 </div>
 
-                {/* Key Takeaways */}
-                <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3">
-                  <div className="text-xs font-mono text-amber-400 font-bold uppercase">
-                    Key Mechanisms & Core Takeaways
-                  </div>
-                  <ul className="space-y-2">
-                    {generationResult.key_takeaways?.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2 bg-[#0b1222] p-2.5 rounded border border-[#16233a] text-xs text-slate-300">
-                        <span className="text-cyan-400 font-bold font-mono shrink-0">0{idx + 1}.</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <span>2D SCHEMATIC ENGINE ENGAGED</span>
                 </div>
-
-                {/* Relationships */}
-                {generationResult.relationships?.length > 0 && (
-                  <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3">
-                    <div className="text-xs font-mono text-sky-400 font-bold uppercase">
-                      Concept Relationships ({generationResult.relationships.length})
-                    </div>
-                    <div className="space-y-2">
-                      {generationResult.relationships.map((r, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs font-mono p-2 bg-[#0b1222] rounded border border-[#16233a]">
-                          <span className="text-cyan-300 font-bold">{r.from}</span>
-                          <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
-                          <span className="text-slate-500 italic">{r.type}</span>
-                          <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
-                          <span className="text-amber-300 font-bold">{r.to}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Concepts sidebar */}
-              <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3 flex flex-col">
-                <div className="text-xs font-mono text-cyan-400 font-bold uppercase">
-                  Identified Concepts ({generationResult.concepts?.length || 0})
-                </div>
-                <div className="space-y-2.5 flex-1 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
-                  {generationResult.concepts?.map((c) => {
-                    // find a matching node for recall modal
-                    const matchNode = generationResult.nodes?.find((n) => n.node_id === c.id) || {
-                      node_id: c.id,
-                      title: c.name,
-                      explanation: c.definition,
-                      recallPrompt: c.recall_prompt,
-                    };
-                    return (
-                      <div key={c.id} className="p-3 rounded bg-[#0b1222] border border-[#18263f] space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-white font-['Space_Grotesk'] leading-tight">{c.name}</span>
-                          <span className="text-[9px] font-mono uppercase px-1 py-0.5 rounded bg-black text-cyan-300 border border-cyan-500/30 shrink-0">
-                            {c.importance}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-snug">{c.definition}</p>
-                        {c.recall_prompt && (
-                          <button
-                            onClick={() => { playBlip(); setNodeQuizTarget(matchNode); }}
-                            className="w-full text-left text-[10px] font-mono text-amber-400 hover:text-amber-300 bg-amber-950/20 border border-amber-500/20 hover:border-amber-400/50 rounded px-2 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer"
-                          >
-                            <Zap className="w-3 h-3 shrink-0" />
-                            <span className="line-clamp-1">{c.recall_prompt}</span>
-                          </button>
-                        )}
+              {explanationSubView === 'diagram' ? (
+                <VisualErrorBoundary>
+                  <Explanation2DWorld
+                    data={explanationData}
+                    onAwardXP={onAwardXP}
+                    onOpenQuiz={() => setShowQuizModal(true)}
+                    onEnterSubject={handleEnterRealm}
+                    initialTab="diagram"
+                  />
+                </VisualErrorBoundary>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+                  <div className="lg:col-span-2 space-y-4">
+                    {/* Summary */}
+                    <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold uppercase">
+                        <FileText className="w-4 h-4" />
+                        <span>Executive Concept Summary</span>
                       </div>
-                    );
-                  })}
+                      <p className="text-sm text-slate-200 leading-relaxed font-sans">
+                        {explanationData?.summary}
+                      </p>
+                    </div>
+
+                    {/* Key Takeaways */}
+                    <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3">
+                      <div className="text-xs font-mono text-amber-400 font-bold uppercase">
+                        Key Mechanisms &amp; Core Takeaways
+                      </div>
+                      <ul className="space-y-2">
+                        {explanationData?.key_takeaways?.map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2 bg-[#0b1222] p-2.5 rounded border border-[#16233a] text-xs text-slate-300">
+                            <span className="text-cyan-400 font-bold font-mono shrink-0">0{idx + 1}.</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Relationships */}
+                    {explanationData?.relationships?.length > 0 && (
+                      <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3">
+                        <div className="text-xs font-mono text-sky-400 font-bold uppercase">
+                          Concept Relationships ({explanationData.relationships.length})
+                        </div>
+                        <div className="space-y-2">
+                          {explanationData.relationships.map((r, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-xs font-mono p-2 bg-[#0b1222] rounded border border-[#16233a]">
+                              <span className="text-cyan-300 font-bold">{r.from}</span>
+                              <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
+                              <span className="text-slate-500 italic">{r.type}</span>
+                              <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
+                              <span className="text-amber-300 font-bold">{r.to}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Concepts sidebar */}
+                  <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3 flex flex-col">
+                    <div className="text-xs font-mono text-cyan-400 font-bold uppercase">
+                      Identified Concepts ({explanationData?.concepts?.length || 0})
+                    </div>
+                    <div className="space-y-2.5 flex-1 overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
+                      {explanationData?.concepts?.map((c) => {
+                        const matchNode = explanationData.nodes?.find((n) => n.node_id === c.id || n.id === c.id) || {
+                          node_id: c.id,
+                          title: c.name || c.title,
+                          explanation: c.definition || c.explanation,
+                          recallPrompt: c.recall_prompt || c.recallPrompt,
+                        };
+                        return (
+                          <div key={c.id} className="p-3 rounded bg-[#0b1222] border border-[#18263f] space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold text-white font-['Space_Grotesk'] leading-tight">{c.name || c.title}</span>
+                              <span className="text-[9px] font-mono uppercase px-1 py-0.5 rounded bg-black text-cyan-300 border border-cyan-500/30 shrink-0">
+                                {c.importance || 'core'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-snug">{c.definition || matchNode.explanation}</p>
+                            {(c.recall_prompt || matchNode.recallPrompt) && (
+                              <button
+                                onClick={() => { playBlip(); setNodeQuizTarget(matchNode); }}
+                                className="w-full text-left text-[10px] font-mono text-amber-400 hover:text-amber-300 bg-amber-950/20 border border-amber-500/20 hover:border-amber-400/50 rounded px-2 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <Zap className="w-3 h-3 shrink-0" />
+                                <span className="line-clamp-1">{c.recall_prompt || matchNode.recallPrompt}</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
+            </VisualErrorBoundary>
           )}
 
           {/* ═══════════════════════════════════════
               MODE 2 — GRAPH / CONCEPT MATRIX
           ═══════════════════════════════════════ */}
           {selectedTarget === 'graph' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-              {/* Nodes grid */}
-              <div className="lg:col-span-2 p-5 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col" style={{ minHeight: 420 }}>
-                <div className="flex items-center justify-between border-b border-[#141f36] pb-3 mb-4">
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold">
+            <div className="space-y-4">
+              {/* Sub-view toggle between Canvas Graph Realm & Matrix Grid */}
+              <div className="flex items-center justify-between bg-[#080d19] p-2.5 rounded-lg border border-[#192742]">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { playBlip(); setGraphViewMode('canvas'); }}
+                    className={`px-4 py-2 rounded font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      graphViewMode === 'canvas'
+                        ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
                     <Network className="w-4 h-4" />
-                    <span>CONCEPT MATRIX — {generationResult.nodes?.length || 0} NODES</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400" /> Primary</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-400" /> Secondary</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400" /> Tertiary</span>
-                  </div>
+                    <span>INTERACTIVE GRAPH REALM</span>
+                  </button>
+
+                  <button
+                    onClick={() => { playBlip(); setGraphViewMode('matrix'); }}
+                    className={`px-4 py-2 rounded font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      graphViewMode === 'matrix'
+                        ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>MATRIX GRID &amp; INSPECTOR</span>
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 flex-1 content-start">
-                  {generationResult.nodes?.map((node) => {
-                    const isSelected = selectedNode?.node_id === node.node_id;
-                    const hasLinkedQ = generationResult.questions?.some((q) => q.linked_node_id === node.node_id);
-                    return (
-                      <div
-                        key={node.node_id}
-                        onClick={() => { playBlip(); setSelectedNode(node); }}
-                        className={`p-3.5 rounded border transition-all cursor-pointer text-left group ${
-                          isSelected
-                            ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-                            : 'bg-[#0b1222] border-[#18263f] hover:border-cyan-500/60 hover:bg-[#0e172e]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${importanceDot(node.importance)} shrink-0`} />
-                            <span className="text-[10px] font-mono uppercase text-slate-400 font-semibold">
-                              {node.importance}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {node.suggested_cluster && (
-                              <span className="text-[10px] font-mono text-slate-500">{node.suggested_cluster}</span>
-                            )}
-                            {hasLinkedQ && (
-                              <span className="text-[9px] font-mono px-1 py-0.5 bg-amber-950/60 text-amber-400 border border-amber-500/30 rounded">
-                                QUIZ
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <h4 className="text-sm font-bold text-white mb-1 font-['Space_Grotesk']">{node.title}</h4>
-                        <p className="text-xs text-slate-400 line-clamp-2">{node.explanation}</p>
-                      </div>
-                    );
-                  })}
+                <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <span>HOLOGRAPHIC CONDUIT ENGINE ONLINE</span>
                 </div>
               </div>
 
-              {/* Node Inspector */}
-              <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col text-left">
-                <div className="flex items-center justify-between border-b border-[#141f36] pb-3 mb-4">
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold">
-                    <Eye className="w-4 h-4" />
-                    <span>NODE INSPECTOR</span>
-                  </div>
+              {graphViewMode === 'canvas' ? (
+                <div className="space-y-4">
+                  <ConceptGraphWorld
+                    data={generationResult}
+                    selectedNode={selectedNode}
+                    onSelectNode={setSelectedNode}
+                    onOpenQuiz={() => setShowQuizModal(true)}
+                    onNodeQuizTarget={(node) => setNodeQuizTarget(node)}
+                  />
+
+                  {/* Below Canvas: Selected Node Inspector */}
                   {selectedNode && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-400 text-cyan-300">
-                      {selectedNode.node_id}
-                    </span>
+                    <div className="p-4 rounded-lg bg-[#080d19] border border-[#192742] grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                      <div className="md:col-span-2 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold uppercase">
+                          <Eye className="w-4 h-4" />
+                          <span>TARGET NODE TELEMETRY — {selectedNode.node_id || selectedNode.id}</span>
+                        </div>
+                        <h4 className="text-base font-bold text-white font-['Space_Grotesk']">{selectedNode.title}</h4>
+                        <p className="text-xs text-slate-300 leading-relaxed bg-[#0b1120] p-3 rounded border border-[#172338]">
+                          {selectedNode.explanation}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col justify-between space-y-3">
+                        {selectedNode.recallPrompt ? (
+                          <div
+                            onClick={() => { playBlip(); setNodeQuizTarget(selectedNode); }}
+                            className="bg-amber-950/30 border border-amber-500/30 hover:border-amber-400 p-3 rounded cursor-pointer transition-all group"
+                          >
+                            <span className="text-[10px] font-mono text-amber-400 uppercase font-bold tracking-wider">ACTIVE RECALL CHALLENGE</span>
+                            <p className="text-xs text-amber-200 font-mono mt-1 leading-snug">{selectedNode.recallPrompt}</p>
+                            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-amber-400 group-hover:text-amber-300">
+                              <Zap className="w-3 h-3" />
+                              <span>CLICK TO TEST KNOWLEDGE (+25 XP)</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-[#0b1120] p-3 rounded border border-[#172338] text-xs font-mono text-slate-400">
+                            Cluster: <span className="text-cyan-300">{selectedNode.suggested_cluster || selectedNode.cluster || 'Core'}</span>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            playBlip();
+                            setShowQuizModal(true);
+                          }}
+                          className="w-full py-2.5 rounded border border-cyan-400/60 bg-cyan-950/30 text-cyan-300 font-mono text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-cyan-950/60 transition-colors"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                          LAUNCH ALL RECALL CHALLENGES
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-                {selectedNode ? (
-                  <div className="space-y-4 flex-1">
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Concept</label>
-                      <h4 className="text-base font-bold text-white mt-0.5 font-['Space_Grotesk']">{selectedNode.title}</h4>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+                  {/* Nodes grid */}
+                  <div className="lg:col-span-2 p-5 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col" style={{ minHeight: 420 }}>
+                    <div className="flex items-center justify-between border-b border-[#141f36] pb-3 mb-4">
+                      <div className="flex items-center gap-2 text-xs font-mono text-cyan-400 font-bold">
+                        <Network className="w-4 h-4" />
+                        <span>CONCEPT MATRIX — {generationResult.nodes?.length || 0} NODES</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-400" /> Primary</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-400" /> Secondary</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400" /> Tertiary</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Explanation</label>
-                      <p className="text-xs text-slate-300 leading-relaxed mt-1 bg-[#0b1120] p-3 rounded border border-[#172338]">
-                        {selectedNode.explanation}
-                      </p>
-                    </div>
 
-                    {selectedNode.recallPrompt && (
-                      <div>
-                        <label className="text-[10px] font-mono text-amber-400 uppercase tracking-wider">Active Recall</label>
-                        <div
-                          onClick={() => { playBlip(); setNodeQuizTarget(selectedNode); }}
-                          className="mt-1 bg-amber-950/30 border border-amber-500/30 hover:border-amber-400 p-2.5 rounded cursor-pointer transition-all group"
-                        >
-                          <p className="text-xs text-amber-200 font-mono leading-snug">{selectedNode.recallPrompt}</p>
-                          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-amber-400 group-hover:text-amber-300">
-                            <Zap className="w-3 h-3" />
-                            <span>CLICK TO TEST YOURSELF</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 flex-1 content-start">
+                      {generationResult.nodes?.map((node) => {
+                        const isSelected = selectedNode?.node_id === node.node_id;
+                        const hasLinkedQ = generationResult.questions?.some((q) => q.linked_node_id === node.node_id);
+                        return (
+                          <div
+                            key={node.node_id}
+                            onClick={() => { playBlip(); setSelectedNode(node); }}
+                            className={`p-3.5 rounded border transition-all cursor-pointer text-left group ${
+                              isSelected
+                                ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                                : 'bg-[#0b1222] border-[#18263f] hover:border-cyan-500/60 hover:bg-[#0e172e]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${importanceDot(node.importance)} shrink-0`} />
+                                <span className="text-[10px] font-mono uppercase text-slate-400 font-semibold">
+                                  {node.importance}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {node.suggested_cluster && (
+                                  <span className="text-[10px] font-mono text-slate-500">{node.suggested_cluster}</span>
+                                )}
+                                {hasLinkedQ && (
+                                  <span className="text-[9px] font-mono px-1 py-0.5 bg-amber-950/60 text-amber-400 border border-amber-500/30 rounded">
+                                    QUIZ
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <h4 className="text-sm font-bold text-white mb-1 font-['Space_Grotesk']">{node.title}</h4>
+                            <p className="text-xs text-slate-400 line-clamp-2">{node.explanation}</p>
                           </div>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Node Inspector */}
+                  <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col text-left">
+                    <div className="flex items-center justify-between border-b border-[#141f36] pb-3 mb-4">
+                      <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold">
+                        <Eye className="w-4 h-4" />
+                        <span>NODE INSPECTOR</span>
                       </div>
-                    )}
+                      {selectedNode && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-400 text-cyan-300">
+                          {selectedNode.node_id}
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Linked Quiz button */}
-                    {findLinkedQuestion(selectedNode.node_id) && (
-                      <button
-                        onClick={() => {
-                          playBlip();
-                          setShowQuizModal(true);
-                        }}
-                        className="w-full py-2 rounded border border-amber-400/60 bg-amber-950/20 text-amber-300 font-mono text-[11px] font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-amber-950/40 transition-colors"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5" />
-                        TAKE LINKED QUIZ CHALLENGE
-                      </button>
-                    )}
-
-                    {/* Connections */}
-                    {generationResult.edges?.filter(
-                      (e) => e.source_id === selectedNode.node_id || e.target_id === selectedNode.node_id
-                    ).length > 0 && (
-                      <div>
-                        <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Connected To</label>
-                        <div className="space-y-1.5 mt-1">
-                          {generationResult.edges
-                            ?.filter((e) => e.source_id === selectedNode.node_id || e.target_id === selectedNode.node_id)
-                            .map((e, i) => {
-                              const otherId = e.source_id === selectedNode.node_id ? e.target_id : e.source_id;
-                              const otherNode = generationResult.nodes?.find((n) => n.node_id === otherId);
-                              return (
-                                <div
-                                  key={i}
-                                  onClick={() => { if (otherNode) { playBlip(); setSelectedNode(otherNode); } }}
-                                  className="flex items-center gap-2 text-[10px] font-mono p-1.5 rounded bg-[#0b1222] border border-[#16233a] hover:border-cyan-500/40 cursor-pointer transition-colors"
-                                >
-                                  <ChevronRight className="w-3 h-3 text-cyan-500 shrink-0" />
-                                  <span className="text-slate-500 italic">{e.relationship_type}</span>
-                                  <span className="text-cyan-300 font-bold ml-auto">{otherId}</span>
-                                </div>
-                              );
-                            })}
+                    {selectedNode ? (
+                      <div className="space-y-4 flex-1">
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Concept</label>
+                          <h4 className="text-base font-bold text-white mt-0.5 font-['Space_Grotesk']">{selectedNode.title}</h4>
                         </div>
+                        <div>
+                          <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Explanation</label>
+                          <p className="text-xs text-slate-300 leading-relaxed mt-1 bg-[#0b1120] p-3 rounded border border-[#172338]">
+                            {selectedNode.explanation}
+                          </p>
+                        </div>
+
+                        {selectedNode.recallPrompt && (
+                          <div>
+                            <label className="text-[10px] font-mono text-amber-400 uppercase tracking-wider">Active Recall</label>
+                            <div
+                              onClick={() => { playBlip(); setNodeQuizTarget(selectedNode); }}
+                              className="mt-1 bg-amber-950/30 border border-amber-500/30 hover:border-amber-400 p-2.5 rounded cursor-pointer transition-all group"
+                            >
+                              <p className="text-xs text-amber-200 font-mono leading-snug">{selectedNode.recallPrompt}</p>
+                              <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-amber-400 group-hover:text-amber-300">
+                                <Zap className="w-3 h-3" />
+                                <span>CLICK TO TEST YOURSELF</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Linked Quiz button */}
+                        {findLinkedQuestion(selectedNode.node_id) && (
+                          <button
+                            onClick={() => {
+                              playBlip();
+                              setShowQuizModal(true);
+                            }}
+                            className="w-full py-2 rounded border border-amber-400/60 bg-amber-950/20 text-amber-300 font-mono text-[11px] font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-amber-950/40 transition-colors"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            TAKE LINKED QUIZ CHALLENGE
+                          </button>
+                        )}
+
+                        {/* Connections */}
+                        {generationResult.edges?.filter(
+                          (e) => e.source_id === selectedNode.node_id || e.target_id === selectedNode.node_id
+                        ).length > 0 && (
+                          <div>
+                            <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Connected To</label>
+                            <div className="space-y-1.5 mt-1">
+                              {generationResult.edges
+                                ?.filter((e) => e.source_id === selectedNode.node_id || e.target_id === selectedNode.node_id)
+                                .map((e, i) => {
+                                  const otherId = e.source_id === selectedNode.node_id ? e.target_id : e.source_id;
+                                  const otherNode = generationResult.nodes?.find((n) => n.node_id === otherId);
+                                  return (
+                                    <div
+                                      key={i}
+                                      onClick={() => { if (otherNode) { playBlip(); setSelectedNode(otherNode); } }}
+                                      className="flex items-center gap-2 text-[10px] font-mono p-1.5 rounded bg-[#0b1222] border border-[#16233a] hover:border-cyan-500/40 cursor-pointer transition-colors"
+                                    >
+                                      <ChevronRight className="w-3 h-3 text-cyan-500 shrink-0" />
+                                      <span className="text-slate-500 italic">{e.relationship_type}</span>
+                                      <span className="text-cyan-300 font-bold ml-auto">{otherId}</span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
+                        <Eye className="w-8 h-8 text-slate-700" />
+                        <p className="text-xs font-mono text-slate-500">Click any concept node to inspect its telemetry, explanation, and linked recall challenge.</p>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
-                    <Eye className="w-8 h-8 text-slate-700" />
-                    <p className="text-xs font-mono text-slate-500">Click any concept node to inspect its telemetry, explanation, and linked recall challenge.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* ═══════════════════════════════════════
-              MODE 3 — RPG / 2D WORLD REALM
+              MODE 3 — RPG / 2D WORLD REALM (PLAYABLE LIKE PHYSICS / BIOLOGY)
           ═══════════════════════════════════════ */}
-          {selectedTarget === 'rpg' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-              <div className="lg:col-span-2 space-y-4">
+          {selectedTarget === 'rpg' && playableRealm && (
+            <VisualErrorBoundary>
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <BiologyWorld
+                  realm={playableRealm}
+                  onBackToHub={() => setSelectedTarget('explanation')}
+                  onOpenQuiz={(quiz) => handleOpenRealmQuiz(quiz)}
+                  playerStats={playerStats}
+                  onAwardXP={onAwardXP}
+                  isInputLocked={Boolean(activeRealmQuiz || showQuizModal)}
+                />
 
-                {/* Zones */}
-                <div className="p-5 rounded-lg bg-[#080d19] border border-amber-500/40 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-mono text-amber-400 font-bold uppercase">
-                    <Compass className="w-4 h-4" />
-                    <span>2D World Zones</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {generationResult.zones?.map((zone) => (
-                      <div
-                        key={zone.id}
-                        onClick={() => handleEnterRealm('geography')}
-                        className="p-3 rounded bg-[#0b1222] border border-amber-500/30 hover:border-amber-400 cursor-pointer transition-colors group space-y-1"
-                      >
-                        <div className="text-xs font-bold text-amber-300 font-mono group-hover:text-amber-200">{zone.name}</div>
-                        <p className="text-[11px] text-slate-400 leading-snug">{zone.description}</p>
-                        <div className="text-[10px] font-mono text-amber-500/60 group-hover:text-amber-400 flex items-center gap-1 mt-1">
-                          <Play className="w-2.5 h-2.5" /> ENTER ZONE
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quests */}
-                <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] space-y-3">
-                  <div className="text-xs font-mono text-cyan-400 font-bold uppercase">
-                    Active Recall Quests ({generationResult.quests?.length || 0})
-                  </div>
-                  <div className="space-y-2">
-                    {generationResult.quests?.map((q, idx) => (
-                      <div key={q.quest_id || idx} className="p-3 rounded bg-[#0b1222] border border-[#16233a] flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-white">{q.title}</div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{q.description}</div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/30 font-bold">
-                            +{q.xp || 50} EXP
+                {/* Below Realm: Concept Telemetry & Direct Recall */}
+                <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                  <div className="md:col-span-2 p-4 rounded-lg bg-[#080d19] border border-[#192742] space-y-2">
+                    <div className="text-xs font-mono text-cyan-400 font-bold uppercase flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>EXPLORABLE CONCEPTS &amp; LANDMARKS ({playableRealm.landmarks?.length || 0})</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {playableRealm.landmarks?.map((lm) => (
+                        <div
+                          key={lm.id}
+                          onClick={() => handleOpenRealmQuiz(lm.quiz)}
+                          className="p-2.5 rounded bg-[#0b1222] border border-[#16233a] hover:border-amber-400/60 cursor-pointer transition-all flex items-center gap-2 group"
+                        >
+                          <span className="text-lg">{lm.icon}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-white group-hover:text-amber-300 font-mono truncate">{lm.name}</div>
+                            <div className="text-[10px] text-slate-400 truncate">{lm.category}</div>
+                          </div>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-500/30 shrink-0">
+                            QUIZ
                           </span>
-                          {q.linked_question ? (
-                            <button
-                              onClick={() => { playBlip(); setQuestQuizIdx(idx); }}
-                              className="px-2.5 py-1.5 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 hover:bg-cyan-500/30 font-mono text-[10px] font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                            >
-                              <Play className="w-3 h-3" />
-                              START
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => { playBlip(); setNodeQuizTarget(generationResult.nodes?.[idx] || null); }}
-                              className="px-2.5 py-1.5 rounded bg-slate-700/40 border border-slate-600 text-slate-400 hover:border-slate-500 font-mono text-[10px] font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                              disabled={!generationResult.nodes?.[idx]?.recallPrompt}
-                            >
-                              <Zap className="w-3 h-3" />
-                              RECALL
-                            </button>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="text-xs font-mono text-amber-400 font-bold uppercase mb-2">Realm Instructions</div>
+                      <p className="text-xs font-mono text-slate-300 leading-relaxed">
+                        • Use <span className="text-cyan-300 font-bold">Arrow Keys</span> or <span className="text-cyan-300 font-bold">WASD</span> to walk.
+                        <br />
+                        • Walk near any concept station <span className="text-amber-300 font-bold">[!]</span> to interact.
+                        <br />
+                        • Press <span className="text-cyan-300 font-bold">SPACE</span> or click to open dialogue &amp; take quizzes!
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => { playBlip(); setShowQuizModal(true); }}
+                      className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase font-mono tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2"
+                    >
+                      <Trophy className="w-4 h-4" />
+                      <span>RUN ALL QUIZZES</span>
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* Right: Telemetry + Navigate Buttons */}
-              <div className="p-5 rounded-lg bg-[#080d19] border border-[#192742] flex flex-col gap-4 text-left">
-                {/* Realm stats */}
-                <div>
-                  <div className="text-xs font-mono text-cyan-400 font-bold uppercase mb-3">Realm Telemetry</div>
-                  <div className="p-3 rounded bg-[#0b1222] border border-[#16233a] text-xs font-mono space-y-2 text-slate-300">
-                    <div><span className="text-slate-500">THEME:</span> {generationResult.world?.theme || 'Cyber Realm'}</div>
-                    <div><span className="text-slate-500">ZONES:</span> {generationResult.zones?.length || 3} Active</div>
-                    <div><span className="text-slate-500">QUESTS:</span> {generationResult.quests?.length || 5} Ready</div>
-                    <div><span className="text-slate-500">RECALL CHECKS:</span> {generationResult.questions?.length || 2}</div>
-                  </div>
-                </div>
-
-                {/* Navigate to existing subjects */}
-                <div>
-                  <div className="text-xs font-mono text-slate-500 uppercase mb-2">Enter an Existing Realm</div>
-                  <div className="space-y-2">
-                    {[
-                      { key: 'biology', icon: Dna, label: 'BIOLOGY LAB', color: 'text-cyan-300 border-cyan-400/60 bg-cyan-950/20 hover:bg-cyan-950/40' },
-                      { key: 'history', icon: Landmark, label: 'HISTORY CODEX', color: 'text-amber-300 border-amber-400/60 bg-amber-950/20 hover:bg-amber-950/40' },
-                      { key: 'physics', icon: Atom, label: 'PHYSICS MATRIX', color: 'text-sky-300 border-sky-400/60 bg-sky-950/20 hover:bg-sky-950/40' },
-                      { key: 'geography', icon: Globe2, label: 'GEOGRAPHY REALM', color: 'text-emerald-300 border-emerald-400/60 bg-emerald-950/20 hover:bg-emerald-950/40' },
-                    ].map(({ key, icon: Icon, label, color }) => (
-                      <button
-                        key={key}
-                        onClick={() => handleEnterRealm(key)}
-                        className={`w-full py-2 px-3 rounded border font-mono text-[11px] font-bold flex items-center gap-2 cursor-pointer transition-all ${color}`}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        {label}
-                        <ChevronRight className="w-3.5 h-3.5 ml-auto" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Full recall test */}
-                {generationResult.questions?.length > 0 && (
-                  <button
-                    onClick={() => { playBlip(); setShowQuizModal(true); }}
-                    className="w-full py-3 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase font-mono tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2 mt-auto"
-                  >
-                    <Trophy className="w-4 h-4" />
-                    ⚔ RUN FULL RECALL TEST
-                  </button>
-                )}
-              </div>
-            </div>
+            </VisualErrorBoundary>
           )}
         </div>
 
@@ -1865,10 +2294,10 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="font-mono text-sm font-black text-white uppercase" style={{ letterSpacing: '0.16em' }}>2D EXPLANATION</h4>
-                            <span className="border border-[#33495d] bg-[#0b1424] px-1.5 py-0.5 font-mono text-[8px] font-bold text-slate-500">DOSSIER</span>
+                            <span className="border border-cyan-400/50 bg-cyan-950 px-1.5 py-0.5 font-mono text-[8px] font-bold text-cyan-300">2D DIAGRAMS + DOSSIER</span>
                           </div>
                           <p className="mt-2 font-mono text-[10px] leading-relaxed text-slate-400">
-                            Deep conceptual synthesis — mechanisms, relationships &amp; key takeaways as a structured study dossier with clickable recall prompts.
+                            Explorable 2D interactive diagrams, reaction schematics, and structured study dossier with clickable recall prompts.
                           </p>
                         </div>
                       </div>
@@ -1900,19 +2329,19 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                     <button
                       type="button"
                       onClick={() => { playBlip(); setSelectedTarget('rpg'); }}
-                      className={`syn-target w-full cursor-pointer p-4 text-left ${selectedTarget === 'rpg' ? 'syn-target-selected' : ''}`}
+                      className={`syn-target w-full cursor-pointer p-3.5 text-left ${selectedTarget === 'rpg' ? 'syn-target-selected' : ''}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="shrink-0 border border-[#4a5360] bg-[#171b20] p-2 text-yellow-300">
+                        <div className="shrink-0 border border-amber-400/60 bg-amber-950/70 p-2 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
                           <Compass className="h-5 w-5" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-mono text-sm font-black text-white uppercase" style={{ letterSpacing: '0.16em' }}>2D WORLD REALM</h4>
-                            <span className="border border-[#33495d] bg-[#0b1424] px-1.5 py-0.5 font-mono text-[8px] font-bold text-slate-500">RPG</span>
+                            <h4 className="font-mono text-sm font-black text-amber-300 uppercase" style={{ letterSpacing: '0.16em' }}>2D WORLD REALM</h4>
+                            <span className="border border-amber-400/60 bg-amber-950 px-1.5 py-0.5 font-mono text-[8px] font-bold text-amber-300">PLAYABLE + QUIZ</span>
                           </div>
-                          <p className="mt-2 font-mono text-[10px] leading-relaxed text-slate-400">
-                            Playable RPG world — explore zones, complete quests, and do active recall challenges with XP rewards per concept mastered.
+                          <p className="mt-1 font-mono text-[10px] leading-relaxed text-slate-300">
+                            Playable 2D retro world — walk around, explore concept stations, talk to NPCs, and test recall quizzes for XP!
                           </p>
                         </div>
                       </div>
@@ -1927,7 +2356,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                     </div>
                   )}
 
-                  {/* CTA */}
+                  {/* CTA: ANALYSE NOTES */}
                   <div className="mt-auto pt-4">
                     <button
                       onClick={handleAnalyse}
@@ -1950,7 +2379,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                       ) : (
                         <span className="flex items-center justify-center gap-2">
                           <Sparkles className="h-4 w-4 fill-current" />
-                          ANALYSE &amp; GENERATE
+                          ANALYSE NOTES
                         </span>
                       )}
                     </button>

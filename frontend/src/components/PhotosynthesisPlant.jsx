@@ -295,8 +295,7 @@ export default function PhotosynthesisPlant({ onOpenQuiz, onPlayRealm }) {
               retroAudio.playInteract();
               setActiveStage(stage);
             }}
-            className={`btn-pixel text-[8px] sm:text-[10px] py-1.5 px-2.5 ${activeStage.id === stage.id ? 'btn-pixel-green' : ''}`}
-            style={activeStage.id === stage.id ? undefined : { borderColor: stage.color, color: stage.color }}
+            className={`btn-pixel text-[8px] sm:text-[10px] py-1.5 px-2.5 ${activeStage.id === stage.id ? 'btn-pixel-amber' : ''}`}
           >
             {stage.label}
           </button>

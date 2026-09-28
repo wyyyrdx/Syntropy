@@ -355,6 +355,63 @@ canvas, img, .pixel-art {
   border-color: #fde68a;
 }
 
+/* Retro Arcade Waypoint Button (Interactive 16-bit Gate/Waypoint) */
+.btn-pixel-card {
+  font-family: var(--font-pixel);
+  background: #1e293b;
+  color: #f8fafc;
+  border: 2px solid #475569;
+  box-shadow: 3px 3px 0px #090e17;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.1s ease;
+  user-select: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.btn-pixel-card:hover {
+  background: #2b394e;
+  border-color: #64748b;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #090e17;
+}
+
+.btn-pixel-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #090e17;
+}
+
+.btn-pixel-card-active {
+  background: #d97706 !important;
+  border-color: #fbbf24 !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0px #78350f !important;
+}
+
+.btn-pixel-card-active:hover {
+  background: #f59e0b !important;
+  border-color: #fde68a !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #78350f !important;
+}
+
+.btn-pixel-card-active:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #78350f !important;
+}
+
+.btn-pixel-card-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px);
+  opacity: 0.6;
+}
+
 /* Arcade Beveled Box */
 .pixel-box {
   background: #0d1322;

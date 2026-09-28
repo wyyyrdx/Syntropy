@@ -306,13 +306,10 @@ export default function BiologyCell({ onSelectRealm, activeRealmId }) {
         </div>
       </div>
 
-      <div className="mt-2 text-center text-[9px] sm:text-[10px] font-mono text-emerald-400/90 bg-slate-900/90 px-3 py-1.5 border border-emerald-500/30 rounded">
-        CELL WALL • MEMBRANE • NUCLEUS • CHLOROPLASTS • VACUOLE
-      </div>
-
-      <div className="w-full max-w-5xl mt-3">
-        <div className="font-pixel text-[9px] sm:text-[10px] text-slate-400 mb-2 px-1">
-          ORGANELLE GATES ({BIOLOGY_REALMS.length})
+      <div className="w-full max-w-5xl mt-4 sm:mt-5">
+        <div className="font-pixel text-[10px] sm:text-[11px] text-slate-300 mb-2.5 flex items-center justify-between px-1">
+          <span className="tracking-wider">ORGANELLE GATES ({BIOLOGY_REALMS.length}):</span>
+          <span className="font-mono text-xs text-slate-400 hidden sm:inline">SELECT TO WARP CELL</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {ORGANELLES.map((item) => {
@@ -321,27 +318,38 @@ export default function BiologyCell({ onSelectRealm, activeRealmId }) {
             return (
               <button
                 key={item.realmId}
-                onClick={() => startWarp(realm)}
-                className={`p-3.5 rounded-lg border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[88px] ${
-                  isActive
-                    ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/50'
-                    : 'bg-[#090f1d]/90 border-[#19263e] hover:border-cyan-400/60 hover:bg-[#0d162a] hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                onClick={() => {
+                  retroAudio.playInteract();
+                  startWarp(realm);
+                }}
+                className={`btn-pixel-card p-3 sm:p-3.5 min-h-[84px] group ${
+                  isActive ? 'btn-pixel-card-active' : ''
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl filter drop-shadow">{realm.npc.avatar}</span>
-                    <span className="font-mono text-[11px] text-cyan-300/90 tracking-wider font-semibold uppercase px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+                <div className="flex items-center justify-between gap-2 mb-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl filter drop-shadow">{realm.npc.avatar}</span>
+                    <span
+                      className={`text-[9px] font-pixel tracking-wider uppercase px-2 py-0.5 border ${
+                        isActive
+                          ? 'bg-amber-950/80 border-amber-300 text-amber-200'
+                          : 'bg-slate-900/90 border-slate-600 text-slate-300'
+                      }`}
+                    >
                       {item.short}
                     </span>
                   </div>
                   {isActive && (
-                    <span className="font-mono text-[10px] text-cyan-300 font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/50 animate-pulse">
+                    <span className="text-[9px] font-pixel text-amber-200 font-bold uppercase px-2 py-0.5 border border-amber-300 bg-amber-950 shadow-[1px_1px_0px_#000] animate-pulse">
                       ACTIVE
                     </span>
                   )}
                 </div>
-                <div className="font-mono text-sm font-bold text-slate-100 group-hover:text-cyan-200 transition-colors leading-snug">
+                <div
+                  className={`font-pixel text-[10px] sm:text-[11px] leading-snug tracking-wide uppercase ${
+                    isActive ? 'text-white' : 'text-slate-100 group-hover:text-amber-200'
+                  }`}
+                >
                   {realm.name}
                 </div>
               </button>
