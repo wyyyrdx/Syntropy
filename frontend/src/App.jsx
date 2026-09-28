@@ -20,11 +20,13 @@ import {
   Compass, 
   Anchor, 
   Swords, 
-  Flag 
+  Flag,
+  LogOut
 } from 'lucide-react';
 import { retroAudio } from './audio/retroAudio';
 import QuizModal from './components/QuizModal';
 import Dashboard from './pages/Dashboard';
+import LoginPage from './pages/LoginPage';
 
 // Geography Components & Data
 import PixelGlobe from './components/PixelGlobe';
@@ -95,10 +97,42 @@ class AppErrorBoundary extends React.Component {
   }
 }
 
+const AUTH_STORAGE_KEY = 'syntropy_auth';
+
+function readStoredAuth() {
+  try {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!stored) return null;
+
+    const session = JSON.parse(stored);
+    if (!session?.token || !session?.user?.email) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    const payloadSegment = session.token.split('.')[1];
+    if (payloadSegment) {
+      const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(padded));
+      if (payload.exp && payload.exp * 1000 <= Date.now()) {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        return null;
+      }
+    }
+
+    return session;
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
 export default function App() {
   // Navigation State: 'upload' | 'biology' | 'physics' | 'history' | 'geography'
   const [activeSpace, setActiveSpace] = useState('upload');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [authSession, setAuthSession] = useState(readStoredAuth);
 
   // Sub-views for each space (in-page tab navigation)
   const [geoView, setGeoView] = useState('globe'); // 'globe' | 'realm' | 'books'
@@ -206,6 +240,30 @@ export default function App() {
     setActiveSpace(space);
   };
 
+  const handleAuthenticated = useCallback((session) => {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    } catch {
+      // The active session still works when browser storage is unavailable.
+    }
+    setAuthSession(session);
+  }, []);
+
+  const handleLogout = () => {
+    retroAudio.playBlip?.();
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors while ending the in-memory session.
+    }
+    setAuthSession(null);
+    setActiveSpace('upload');
+  };
+
+  if (!authSession) {
+    return <LoginPage onAuthenticated={handleAuthenticated} />;
+  }
+
   return (
     <div className={`w-full h-screen bg-[#060911] text-slate-100 flex flex-col font-sans select-none overflow-hidden ${crtEnabled ? 'crt-overlay' : ''}`}>
       {/* =========================================================
@@ -262,6 +320,22 @@ export default function App() {
 
         {/* Top Right: Player Level, Sound & CRT Toggles */}
         <div className="flex items-center gap-2.5">
+          <div
+            className="hidden sm:flex items-center border border-[#1a2942] bg-[#0b1325] px-2.5 py-1.5 rounded font-mono text-xs text-cyan-200"
+            style={{ maxWidth: '176px' }}
+          >
+            <span className="truncate" title={authSession.user.email}>{authSession.user.email}</span>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="p-1.5 rounded border border-[#1a2942] text-slate-400 bg-[#0b1325] hover:border-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-all cursor-pointer"
+            title="Log out"
+            aria-label="Log out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+
           {/* XP Badge */}
           <div className="hidden xs:flex items-center gap-2 bg-[#090d22] border border-dashed border-[#ffe886] px-2.5 py-1 rounded">
             <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
