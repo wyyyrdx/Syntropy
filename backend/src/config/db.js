@@ -22,4 +22,15 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schema);
 
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((item) => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+ensureColumn('users', 'display_name', 'TEXT');
+ensureColumn('documents', 'user_id', 'TEXT REFERENCES users(id) ON DELETE CASCADE');
+ensureColumn('generation_jobs', 'user_id', 'TEXT REFERENCES users(id) ON DELETE CASCADE');
+
 module.exports = db;

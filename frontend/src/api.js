@@ -4,6 +4,27 @@
 
 const API_BASE = '/api';
 
+function getAuthHeaders() {
+  try {
+    const session = JSON.parse(localStorage.getItem('syntropy_auth') || 'null');
+    return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+async function parseResponse(res, fallbackMessage) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 401) {
+      try { localStorage.removeItem('syntropy_auth'); } catch {}
+      window.dispatchEvent(new Event('syntropy:unauthorized'));
+    }
+    throw new Error(data.error || fallbackMessage);
+  }
+  return data;
+}
+
 export const api = {
   // Check backend health
   getHealth: async () => {
@@ -22,11 +43,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Registration failed');
-    }
-    return await res.json();
+    return parseResponse(res, 'Registration failed');
   },
 
   // User Login
@@ -36,11 +53,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Login failed');
-    }
-    return await res.json();
+    return parseResponse(res, 'Login failed');
   },
 
   // Note Upload
@@ -56,11 +69,7 @@ export const api = {
       body: formData
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Upload failed');
-    }
-    return await res.json();
+    return parseResponse(res, 'Upload failed');
   },
 
   // Poll Note Status
@@ -71,11 +80,7 @@ export const api = {
       }
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to fetch note status');
-    }
-    return await res.json();
+    return parseResponse(res, 'Failed to fetch note status');
   },
 
   // Ingestion: Upload file(s) (PNG, JPG, PDF, WEBP, TXT, MD)
@@ -91,49 +96,47 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Upload failed');
-    }
-    return await res.json();
+    return parseResponse(res, 'Upload failed');
   },
 
   // Ingestion: Trigger AI Generation (explanation | graph | world)
   generateKnowledge: async (documentId, mode = 'graph') => {
     const res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ document_id: documentId, mode })
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Generation failed');
-    }
-    return await res.json();
+    return parseResponse(res, 'Generation failed');
   },
 
   // Ingestion: Get Generation Job Status & Results
   getGenerationJob: async (jobId) => {
-    const res = await fetch(`${API_BASE}/generation/${jobId}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to fetch generation job');
-    }
-    return await res.json();
+    const res = await fetch(`${API_BASE}/generation/${jobId}`, { headers: getAuthHeaders() });
+    return parseResponse(res, 'Failed to fetch generation job');
   },
 
   // Ingestion: Get Document Details
   getDocument: async (documentId) => {
-    const res = await fetch(`${API_BASE}/document/${documentId}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to fetch document');
-    }
-    return await res.json();
+    const res = await fetch(`${API_BASE}/document/${documentId}`, { headers: getAuthHeaders() });
+    return parseResponse(res, 'Failed to fetch document');
+  },
+
+  getProfile: async () => {
+    const res = await fetch(`${API_BASE}/profile`, { headers: getAuthHeaders() });
+    return parseResponse(res, 'Failed to load profile');
+  },
+
+  updateProgress: async (xp, completedQuizzes) => {
+    const res = await fetch(`${API_BASE}/profile/progress`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ xp, completed_quizzes: completedQuizzes })
+    });
+    return parseResponse(res, 'Failed to save progress');
   }
 };
-

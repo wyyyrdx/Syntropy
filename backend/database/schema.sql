@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
   email         TEXT NOT NULL UNIQUE,
+  display_name  TEXT,
   password_hash TEXT NOT NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS session_members (
 
 CREATE TABLE IF NOT EXISTS documents (
   id            TEXT PRIMARY KEY,
+  user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,
   filename      TEXT NOT NULL,
   file_type     TEXT NOT NULL,
   file_size     INTEGER NOT NULL,
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE TABLE IF NOT EXISTS generation_jobs (
   id            TEXT PRIMARY KEY,
+  user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,
   document_id   TEXT NOT NULL,
   mode          TEXT NOT NULL, -- 'explanation' | 'graph' | 'world'
   status        TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'processing' | 'completed' | 'failed'
@@ -91,3 +94,16 @@ CREATE TABLE IF NOT EXISTS generation_results (
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS user_progress (
+  user_id             TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  xp                  INTEGER NOT NULL DEFAULT 0,
+  completed_quizzes   TEXT NOT NULL DEFAULT '[]',
+  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS user_activity (
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  activity_date   TEXT NOT NULL,
+  activity_count  INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, activity_date)
+);

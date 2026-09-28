@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../config/db');
 const { generateConceptGraph } = require('../../ai/generate');
+const { recordActivity } = require('../services/activityService');
 
 /**
  * POST /api/upload
@@ -30,17 +31,14 @@ async function uploadDocument(req, res) {
 
     // Insert into documents table
     db.prepare(
-      `INSERT INTO documents (id, filename, file_type, file_size, file_path, status)
-       VALUES (?, ?, ?, ?, ?, 'ready')`
-    ).run(documentId, filename, fileType, totalSize, filePath);
+      `INSERT INTO documents (id, user_id, filename, file_type, file_size, file_path, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'ready')`
+    ).run(documentId, req.user.id, filename, fileType, totalSize, filePath);
 
     // Also link to sessions & notes for backward compatibility
     try {
       const sessionId = documentId;
-      const userId = req.user?.id || 'guest_user';
-      db.prepare(
-        `INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)`
-      ).run(userId, `${userId}@syntropy.local`, 'guest_session');
+      const userId = req.user.id;
       db.prepare(
         `INSERT OR IGNORE INTO sessions (id, user_id, status) VALUES (?, ?, 'pending')`
       ).run(sessionId, userId);
@@ -54,6 +52,8 @@ async function uploadDocument(req, res) {
     } catch (sessionErr) {
       console.warn('[ingestionController] Legacy session link notice:', sessionErr.message);
     }
+
+    recordActivity(req.user.id);
 
     return res.status(200).json({
       success: true,
@@ -107,15 +107,25 @@ async function generateKnowledge(req, res) {
       docPath = path.resolve(__dirname, '../../../frontend/public/earth_globe_reference.jpg');
       docTitle = 'Organic Chemistry: Alkenes Preparation & Properties';
     } else {
-      const doc = db.prepare(`SELECT * FROM documents WHERE id = ?`).get(document_id);
+      const doc = db.prepare(`SELECT * FROM documents WHERE id = ? AND user_id = ?`)
+        .get(document_id, req.user.id);
       if (doc) {
         docPath = doc.file_path;
         docTitle = doc.filename.replace(/\.[^/.]+$/, '');
       } else {
-        const note = db.prepare(`SELECT * FROM notes WHERE session_id = ?`).get(document_id);
+        const note = db.prepare(
+          `SELECT n.* FROM notes n
+           JOIN sessions s ON s.id = n.session_id
+           WHERE n.session_id = ? AND s.user_id = ?`
+        ).get(document_id, req.user.id);
         if (note) {
           docPath = note.image_path;
           docTitle = note.subject_title || 'Uploaded Notes';
+        } else {
+          return res.status(404).json({
+            success: false,
+            error: 'Document not found.'
+          });
         }
       }
     }
@@ -123,8 +133,9 @@ async function generateKnowledge(req, res) {
     const jobId = `job_${uuidv4().substring(0, 12)}`;
 
     db.prepare(
-      `INSERT INTO generation_jobs (id, document_id, mode, status) VALUES (?, ?, ?, 'processing')`
-    ).run(jobId, document_id, normalizedMode);
+      `INSERT INTO generation_jobs (id, user_id, document_id, mode, status)
+       VALUES (?, ?, ?, ?, 'processing')`
+    ).run(jobId, req.user.id, document_id, normalizedMode);
 
     // Run synthesis
     let rawGraph = null;
@@ -479,6 +490,8 @@ async function generateKnowledge(req, res) {
       `UPDATE generation_jobs SET status = 'completed', completed_at = datetime('now') WHERE id = ?`
     ).run(jobId);
 
+    recordActivity(req.user.id);
+
     return res.status(200).json({
       success: true,
       job_id: jobId,
@@ -502,7 +515,8 @@ async function generateKnowledge(req, res) {
 function getGenerationJob(req, res) {
   try {
     const { jobId } = req.params;
-    const job = db.prepare(`SELECT * FROM generation_jobs WHERE id = ?`).get(jobId);
+    const job = db.prepare(`SELECT * FROM generation_jobs WHERE id = ? AND user_id = ?`)
+      .get(jobId, req.user.id);
 
     if (!job) {
       return res.status(404).json({ success: false, error: 'Generation job not found.' });
@@ -539,7 +553,8 @@ function getGenerationJob(req, res) {
 function getDocument(req, res) {
   try {
     const { documentId } = req.params;
-    const doc = db.prepare(`SELECT * FROM documents WHERE id = ?`).get(documentId);
+    const doc = db.prepare(`SELECT * FROM documents WHERE id = ? AND user_id = ?`)
+      .get(documentId, req.user.id);
 
     if (!doc) {
       return res.status(404).json({ success: false, error: 'Document not found.' });

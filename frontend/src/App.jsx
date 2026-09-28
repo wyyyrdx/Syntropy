@@ -21,12 +21,15 @@ import {
   Anchor, 
   Swords, 
   Flag,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { retroAudio } from './audio/retroAudio';
+import { api } from './api';
 import QuizModal from './components/QuizModal';
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Geography Components & Data
 import PixelGlobe from './components/PixelGlobe';
@@ -128,7 +131,7 @@ function readStoredAuth() {
 }
 
 export default function App() {
-  // Navigation State: 'upload' | 'biology' | 'physics' | 'history' | 'geography'
+  // Navigation State: 'upload' | 'profile' | 'biology' | 'physics' | 'history' | 'geography'
   const [activeSpace, setActiveSpace] = useState('upload');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [authSession, setAuthSession] = useState(readStoredAuth);
@@ -148,7 +151,7 @@ export default function App() {
 
   // Audio & CRT Scanlines
   const [isMuted, setIsMuted] = useState(false);
-  const [crtEnabled, setCrtEnabled] = useState(true);
+  const [crtEnabled, setCrtEnabled] = useState(false);
 
   // Active Recall Quiz & Global Notifications
   const [activeQuiz, setActiveQuiz] = useState(null);
@@ -170,7 +173,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return { xp: 770, level: 4, completedQuizzes: [] };
+    return { xp: 0, level: 1, completedQuizzes: [] };
   });
 
   useEffect(() => {
@@ -179,6 +182,12 @@ export default function App() {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const endExpiredSession = () => setAuthSession(null);
+    window.addEventListener('syntropy:unauthorized', endExpiredSession);
+    return () => window.removeEventListener('syntropy:unauthorized', endExpiredSession);
   }, []);
 
   const showToast = useCallback((message, duration = 3500) => {
@@ -218,6 +227,7 @@ export default function App() {
       } catch {
         // ignore
       }
+      api.updateProgress(updated.xp, updated.completedQuizzes).catch(() => {});
       return updated;
     });
 
@@ -259,12 +269,34 @@ export default function App() {
     setActiveSpace('upload');
   };
 
+  const handleProfileLoaded = useCallback((progress) => {
+    if (!progress) return;
+    setStats((current) => {
+      if (current.xp > (progress.xp || 0)) {
+        api.updateProgress(current.xp, current.completedQuizzes).catch(() => {});
+        return current;
+      }
+
+      const updated = {
+        xp: progress.xp || 0,
+        level: progress.level || 1,
+        completedQuizzes: progress.completed_quizzes || []
+      };
+      try {
+        localStorage.setItem('syntropy_player_stats', JSON.stringify(updated));
+      } catch {
+        // Keep the server-backed state when local storage is unavailable.
+      }
+      return updated;
+    });
+  }, []);
+
   if (!authSession) {
     return <LoginPage onAuthenticated={handleAuthenticated} />;
   }
 
   return (
-    <div className={`w-full h-screen bg-[#060911] text-slate-100 flex flex-col font-sans select-none overflow-hidden ${crtEnabled ? 'crt-overlay' : ''}`}>
+    <div className={`app-shell w-full h-screen bg-[#060911] text-slate-100 flex flex-col font-sans select-none overflow-hidden ${crtEnabled ? 'crt-overlay' : ''}`}>
       {/* =========================================================
           PERSISTENT TOP TERMINAL BAR
           ========================================================= */}
@@ -284,47 +316,36 @@ export default function App() {
         </div>
 
         {/* Brand Center */}
-        <div 
+        <div
           onClick={() => {
             retroAudio.playBlip?.();
             handleSwitchSpace('upload');
           }}
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2.5 cursor-pointer group py-1 px-3 rounded-lg border border-cyan-500/25 bg-[#050a16]/90 backdrop-blur-md hover:border-cyan-400 hover:bg-cyan-950/40 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.18)] hover:shadow-[0_0_30px_rgba(6,182,212,0.45)]"
-          title="Syntropy AI Matrix — Click to return to Ingestion Terminal"
+          className="app-brand absolute left-1/2 -translate-x-1/2 flex items-center gap-2.5 cursor-pointer py-1 px-3 rounded-lg border border-[#1a2942] bg-[#0a101c] hover:border-cyan-700 transition-colors"
+          title="Return to notes"
         >
-          {/* Animated Neon Emblem */}
-          <div className="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded bg-gradient-to-br from-cyan-400 via-teal-400 to-indigo-600 p-[1.5px] shadow-[0_0_12px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform shrink-0">
-            <div className="w-full h-full bg-[#050a16] rounded-[3px] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-300 animate-pulse" />
-            </div>
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-black animate-ping"></span>
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-black"></span>
+          <div className="flex items-center justify-center w-7 h-7 rounded bg-[#102631] border border-[#2d5a67] shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
           </div>
 
-          <div className="flex flex-col items-start text-left">
-            <div className="flex items-center gap-1.5 leading-none">
-              <h1 className="font-mono font-black tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 drop-shadow-[0_0_12px_rgba(6,182,212,0.85)] text-[18px] sm:text-[20px] group-hover:tracking-[0.3em] transition-all duration-300">
-                SYNTROPY
-              </h1>
-              <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 border border-cyan-400/50 text-cyan-300 tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-                AI.OS
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5 text-[8px] font-mono text-cyan-400/70 tracking-[0.14em]">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span>COGNITIVE REALM ENGINE</span>
-            </div>
-          </div>
+          <h1 className="font-sans font-bold tracking-wide text-slate-100 text-base sm:text-lg">Syntropy</h1>
         </div>
 
         {/* Top Right: Player Level, Sound & CRT Toggles */}
         <div className="flex items-center gap-2.5">
-          <div
-            className="hidden sm:flex items-center border border-[#1a2942] bg-[#0b1325] px-2.5 py-1.5 rounded font-mono text-xs text-cyan-200"
-            style={{ maxWidth: '176px' }}
+          <button
+            onClick={() => handleSwitchSpace('profile')}
+            className={`hidden sm:flex items-center gap-2 border px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
+              activeSpace === 'profile'
+                ? 'border-cyan-500 bg-cyan-950/30 text-cyan-200'
+                : 'border-[#1a2942] bg-[#0b1325] text-slate-300 hover:border-cyan-700'
+            }`}
+            style={{ maxWidth: '190px' }}
+            title="Open profile"
           >
-            <span className="truncate" title={authSession.user.email}>{authSession.user.email}</span>
-          </div>
+            <User className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{authSession.user.display_name || authSession.user.email}</span>
+          </button>
 
           <button
             onClick={handleLogout}
@@ -387,8 +408,8 @@ export default function App() {
           } border-r border-[#141f36] bg-[#070b16] transition-all duration-300 flex flex-col shrink-0 overflow-y-auto`}
         >
           <div className="p-3 border-b border-[#141f36]/60">
-            <div className="font-mono font-bold text-cyan-400 uppercase" style={{ fontSize: '15px', letterSpacing: '0.22em' }}>
-              // CORE SPACES
+            <div className="font-sans font-semibold text-slate-400" style={{ fontSize: '13px', letterSpacing: '0.04em' }}>
+              Learning spaces
             </div>
           </div>
 
@@ -414,6 +435,22 @@ export default function App() {
               ) : (
                 <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
               )}
+            </button>
+
+            <button
+              onClick={() => handleSwitchSpace('profile')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded transition-all cursor-pointer ${
+                activeSpace === 'profile'
+                  ? 'bg-cyan-950/30 border border-cyan-500/70 text-cyan-100 font-bold'
+                  : 'hover:bg-[#0c1428] border border-transparent hover:border-[#1e2f4d] text-slate-300 hover:text-cyan-200 font-bold'
+              }`}
+              style={{ fontSize: '14px' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <User className="w-4 h-4 text-cyan-300" />
+                <span>Profile</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>
 
             {/* 2. Biology */}
@@ -525,6 +562,15 @@ export default function App() {
               }}
               playerStats={stats}
               onAwardXP={handleAwardXP}
+            />
+          )}
+
+          {activeSpace === 'profile' && (
+            <ProfilePage
+              sessionUser={authSession.user}
+              playerStats={stats}
+              onNavigateSpace={handleSwitchSpace}
+              onProfileLoaded={handleProfileLoaded}
             />
           )}
 
@@ -1069,7 +1115,7 @@ export default function App() {
 
       {/* Floating XP Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 right-4 sm:right-6 z-50 bg-[#090d22] border-2 border-amber-400 text-amber-200 px-3.5 py-2 rounded shadow-2xl font-mono text-xs flex items-center gap-2 animate-bounce">
+        <div className="fixed top-16 right-4 sm:right-6 z-50 bg-[#0d1523] border border-amber-500/60 text-amber-100 px-3.5 py-2 rounded-lg shadow-xl text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
           <span className="truncate">{toastMessage}</span>
         </div>

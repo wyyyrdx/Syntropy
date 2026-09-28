@@ -25,7 +25,8 @@ async function register(req, res) {
     return res.status(400).json({ error: 'password must be at least 8 characters.' });
   }
 
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
   if (existing) {
     return res.status(409).json({ error: 'An account with this email already exists.' });
   }
@@ -33,10 +34,12 @@ async function register(req, res) {
   const passwordHash = await bcrypt.hash(password, 10);
   const userId = uuidv4();
 
-  db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(userId, email, passwordHash);
+  const displayName = normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ');
+  db.prepare('INSERT INTO users (id, email, display_name, password_hash) VALUES (?, ?, ?, ?)')
+    .run(userId, normalizedEmail, displayName, passwordHash);
 
-  const token = signToken({ id: userId, email });
-  res.status(201).json({ token, user: { id: userId, email } });
+  const token = signToken({ id: userId, email: normalizedEmail });
+  res.status(201).json({ token, user: { id: userId, email: normalizedEmail, display_name: displayName } });
 }
 
 async function login(req, res) {
@@ -46,7 +49,7 @@ async function login(req, res) {
     return res.status(400).json({ error: 'email and password are required.' });
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.trim().toLowerCase());
   if (!user) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
@@ -57,7 +60,10 @@ async function login(req, res) {
   }
 
   const token = signToken(user);
-  res.status(200).json({ token, user: { id: user.id, email: user.email } });
+  res.status(200).json({
+    token,
+    user: { id: user.id, email: user.email, display_name: user.display_name }
+  });
 }
 
 module.exports = { register, login };

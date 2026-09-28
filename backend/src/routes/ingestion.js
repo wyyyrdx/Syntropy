@@ -1,5 +1,6 @@
 const express = require('express');
 const { upload } = require('../middleware/upload');
+const requireAuth = require('../middleware/requireAuth');
 const {
   uploadDocument,
   generateKnowledge,
@@ -16,7 +17,7 @@ const router = express.Router();
  *     summary: Ingest and upload notes/diagrams/PDF
  *     tags: [Ingestion]
  */
-router.post('/upload', upload.any(), (req, res, next) => {
+router.post('/upload', requireAuth, upload.any(), (req, res, next) => {
   uploadDocument(req, res, next);
 });
 
@@ -27,7 +28,7 @@ router.post('/upload', upload.any(), (req, res, next) => {
  *     summary: Generate structured knowledge (explanation, graph, or world)
  *     tags: [Ingestion]
  */
-router.post('/generate', generateKnowledge);
+router.post('/generate', requireAuth, generateKnowledge);
 
 /**
  * @openapi
@@ -36,7 +37,7 @@ router.post('/generate', generateKnowledge);
  *     summary: Retrieve generation status & result
  *     tags: [Ingestion]
  */
-router.get('/generation/:jobId', getGenerationJob);
+router.get('/generation/:jobId', requireAuth, getGenerationJob);
 
 /**
  * @openapi
@@ -45,6 +46,6 @@ router.get('/generation/:jobId', getGenerationJob);
  *     summary: Retrieve document details
  *     tags: [Ingestion]
  */
-router.get('/document/:documentId', getDocument);
+router.get('/document/:documentId', requireAuth, getDocument);
 
 module.exports = router;

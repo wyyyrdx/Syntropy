@@ -7,8 +7,7 @@ import {
   Loader2,
   LockKeyhole,
   Mail,
-  ShieldCheck,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import { api } from '../api';
 import { retroAudio } from '../audio/retroAudio';
@@ -71,55 +70,45 @@ export default function LoginPage({ onAuthenticated }) {
 
   return (
     <main className="auth-screen">
-      <div className="auth-grid" aria-hidden="true" />
-      <div className="auth-scanline" aria-hidden="true" />
-
       <section className="auth-shell">
         <div className="auth-brand-panel">
-          <div className="auth-status">
-            <span className="auth-status-dot" />
-            SYSTEM ONLINE
+          <div className="auth-brand-lockup">
+            <div className="auth-emblem" aria-hidden="true"><Atom /></div>
+            <span>Syntropy</span>
           </div>
 
-          <div className="auth-emblem" aria-hidden="true">
-            <Atom />
-            <span />
-          </div>
-
-          <div>
-            <div className="auth-kicker">// COGNITIVE REALM ENGINE</div>
-            <h1 className="auth-title">SYNTROPY</h1>
+          <div className="auth-intro">
+            <div className="auth-kicker">Learn from your own material</div>
+            <h1 className="auth-title">Turn notes into something you can explore.</h1>
             <p className="auth-lead">
-              Turn your notes into explorable worlds, connected concepts, and active-recall missions.
+              Upload a page, connect its ideas, and practise them through visual worlds and active recall.
             </p>
           </div>
 
           <div className="auth-features">
             <div>
-              <Sparkles />
-              <span>AI NOTE ANALYSIS</span>
+              <span>01</span>
+              <p><strong>Upload your notes</strong><small>Images, PDFs, and written documents.</small></p>
             </div>
             <div>
-              <ShieldCheck />
-              <span>PRIVATE LEARNING SESSION</span>
+              <span>02</span>
+              <p><strong>Choose how to learn</strong><small>Diagrams, concept maps, or playable worlds.</small></p>
             </div>
             <div>
-              <Atom />
-              <span>INTERACTIVE REALMS</span>
+              <span>03</span>
+              <p><strong>Keep your progress</strong><small>Build a streak and revisit past material.</small></p>
             </div>
           </div>
-
-          <div className="auth-build">SYNTROPY.OS // BUILD 1.0</div>
         </div>
 
         <div className="auth-form-panel">
           <div className="auth-form-heading">
-            <div className="auth-step">{isRegistering ? 'NEW PLAYER REGISTRATION' : 'PLAYER AUTHENTICATION'}</div>
-            <h2>{isRegistering ? 'CREATE ACCOUNT' : 'WELCOME BACK'}</h2>
+            <div className="auth-step">{isRegistering ? 'Start learning' : 'Continue learning'}</div>
+            <h2>{isRegistering ? 'Create your account' : 'Welcome back'}</h2>
             <p>
               {isRegistering
-                ? 'Create your access key and begin exploring.'
-                : 'Enter your access credentials to resume your learning world.'}
+                ? 'Save your notes, activity, and progress in one place.'
+                : 'Sign in to return to your notes and learning spaces.'}
             </p>
           </div>
 
@@ -131,7 +120,7 @@ export default function LoginPage({ onAuthenticated }) {
               className={!isRegistering ? 'active' : ''}
               onClick={() => switchMode('login')}
             >
-              SIGN IN
+              Sign in
             </button>
             <button
               type="button"
@@ -140,12 +129,12 @@ export default function LoginPage({ onAuthenticated }) {
               className={isRegistering ? 'active' : ''}
               onClick={() => switchMode('register')}
             >
-              CREATE ACCOUNT
+              Create account
             </button>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            <label htmlFor="auth-email">EMAIL ADDRESS</label>
+            <label htmlFor="auth-email">Email address</label>
             <div className="auth-input-wrap">
               <Mail aria-hidden="true" />
               <input
@@ -161,7 +150,7 @@ export default function LoginPage({ onAuthenticated }) {
               />
             </div>
 
-            <label htmlFor="auth-password">PASSWORD</label>
+            <label htmlFor="auth-password">Password</label>
             <div className="auth-input-wrap">
               <LockKeyhole aria-hidden="true" />
               <input
@@ -187,7 +176,7 @@ export default function LoginPage({ onAuthenticated }) {
 
             {isRegistering && (
               <>
-                <label htmlFor="auth-confirm-password">CONFIRM PASSWORD</label>
+                <label htmlFor="auth-confirm-password">Confirm password</label>
                 <div className="auth-input-wrap">
                   <ShieldCheck aria-hidden="true" />
                   <input
@@ -206,28 +195,25 @@ export default function LoginPage({ onAuthenticated }) {
             )}
 
             <div className="auth-error" role="alert" aria-live="polite">
-              {errorMessage && <span>[ ACCESS DENIED ] {errorMessage}</span>}
+              {errorMessage && <span>{errorMessage}</span>}
             </div>
 
             <button className="auth-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="auth-spinner" />
-                  {isRegistering ? 'CREATING ACCOUNT...' : 'AUTHENTICATING...'}
+                  {isRegistering ? 'Creating account…' : 'Signing in…'}
                 </>
               ) : (
                 <>
-                  {isRegistering ? 'CREATE ACCESS KEY' : 'ENTER SYNTROPY'}
+                  {isRegistering ? 'Create account' : 'Sign in'}
                   <ArrowRight />
                 </>
               )}
             </button>
           </form>
 
-          <p className="auth-security">
-            <LockKeyhole />
-            ENCRYPTED SESSION // JWT ACCESS
-          </p>
+          <p className="auth-security"><ShieldCheck /> Your learning data stays connected to your account.</p>
         </div>
       </section>
     </main>

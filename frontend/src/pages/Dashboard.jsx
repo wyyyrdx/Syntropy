@@ -1535,19 +1535,11 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
   ─────────────────────────────────────────────────────── */
   return (
     <div className="dash-root flex-1 flex flex-col p-4 sm:p-6 lg:p-7 space-y-5 overflow-y-auto">
-      {/* ── GLOBAL FONT PATCH: force VT323 for all font-mono inside dashboard ── */}
       <style>{`
         .dash-root .font-mono,
         .dash-root [class*="font-mono"] {
           font-family: var(--font-mono) !important;
         }
-        .dash-root .text-\[10px\] { font-size: 14px !important; }
-        .dash-root .text-\[11px\] { font-size: 15px !important; }
-        .dash-root .text-\[9px\]  { font-size: 13px !important; }
-        .dash-root .text-\[8px\]  { font-size: 12px !important; }
-        .dash-root .text-xs { font-size: 15px !important; }
-        .dash-root .text-sm { font-size: 17px !important; }
-        .dash-root .text-base { font-size: 18px !important; }
       `}</style>
 
       {/* ── MODALS ── */}
@@ -2181,14 +2173,13 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
             .syn-terminal [class*="font-mono"] { font-family: var(--font-mono) !important; }
             .syn-terminal { font-family: var(--font-mono); }
 
-            /* ── Slightly larger sizes for VT323 legibility ── */
-            .syn-terminal .text-\[8px\]  { font-size: 13px !important; }
-            .syn-terminal .text-\[9px\]  { font-size: 14px !important; }
-            .syn-terminal .text-\[10px\] { font-size: 15px !important; }
-            .syn-terminal .text-\[11px\] { font-size: 17px !important; }
-            .syn-terminal .text-xs       { font-size: 15px !important; }
-            .syn-terminal .text-sm       { font-size: 17px !important; }
-            .syn-terminal .text-lg       { font-size: 22px !important; }
+            .syn-terminal .text-\[8px\]  { font-size: 11px !important; }
+            .syn-terminal .text-\[9px\]  { font-size: 12px !important; }
+            .syn-terminal .text-\[10px\] { font-size: 13px !important; }
+            .syn-terminal .text-\[11px\] { font-size: 14px !important; }
+            .syn-terminal .text-xs       { font-size: 14px !important; }
+            .syn-terminal .text-sm       { font-size: 16px !important; }
+            .syn-terminal .text-lg       { font-size: 20px !important; }
           `}</style>
 
           <div className="syn-terminal syn-terminal-grid h-full">
