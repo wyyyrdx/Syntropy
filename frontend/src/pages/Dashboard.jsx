@@ -924,14 +924,54 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
   const [graphViewMode, setGraphViewMode] = useState('canvas');
   const [explanationSubView, setExplanationSubView] = useState('diagram');
 
-  // ── File Upload ──
-  const [file, setFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
-  const [fileTextContent, setFileTextContent] = useState('');
+  // ── Multi-Page File Upload State ──
+  const [files, setFiles] = useState([]); // Array of { id, file, name, size, type, preview, textContent }
+  const [activePreviewIdx, setActivePreviewIdx] = useState(0);
   const [documentId, setDocumentId] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Backward-compatible accessors for single-file usages
+  const file = files[0]?.file || null;
+  const filePreview = files[activePreviewIdx]?.preview || files[0]?.preview || null;
+  const fileTextContent = files.map(f => f.textContent).filter(Boolean).join('\n\n');
+
+  const setFile = useCallback((val) => {
+    if (!val) {
+      setFiles([]);
+    } else if (Array.isArray(val)) {
+      setFiles(val);
+    } else {
+      setFiles([{
+        id: `f_${Date.now()}`,
+        file: val,
+        name: val.name || 'Uploaded Document',
+        size: val.size || 0,
+        type: val.type || 'image/jpeg',
+        preview: val.preview || null,
+        textContent: val.textContent || ''
+      }]);
+    }
+  }, []);
+
+  const setFilePreview = useCallback((previewVal) => {
+    setFiles(prev => {
+      if (prev.length === 0) return prev;
+      const updated = [...prev];
+      updated[0] = { ...updated[0], preview: previewVal };
+      return updated;
+    });
+  }, []);
+
+  const setFileTextContent = useCallback((textVal) => {
+    setFiles(prev => {
+      if (prev.length === 0) return prev;
+      const updated = [...prev];
+      updated[0] = { ...updated[0], textContent: textVal };
+      return updated;
+    });
+  }, []);
 
   // ── Processing ──
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1084,45 +1124,73 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
     });
   }, []);
 
-  // ── Drag handlers ──
+  // ── Drag & File handlers ──
   const handleDragOver = useCallback((e) => { e.preventDefault(); setIsDragging(true); }, []);
   const handleDragLeave = useCallback((e) => { e.preventDefault(); setIsDragging(false); }, []);
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files?.[0]) processSelectedFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.length > 0) processSelectedFiles(e.dataTransfer.files);
   }, []);
 
   const handleFileChange = (e) => {
-    if (e.target.files?.[0]) processSelectedFile(e.target.files[0]);
+    if (e.target.files?.length > 0) processSelectedFiles(e.target.files);
   };
 
-  const processSelectedFile = async (selectedFile) => {
+  const processSelectedFiles = async (fileList) => {
     playBlip();
     retroAudio.playLaserScan?.();
-    setFile(selectedFile);
     setErrorMessage(null);
     setGenerationResult(null);
     setSelectedNode(null);
 
-    if (selectedFile.type?.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => setFilePreview(e.target.result);
-      reader.readAsDataURL(selectedFile);
-      setFileTextContent('');
-    } else if (selectedFile.type?.startsWith('text/') || selectedFile.name?.match(/\.(txt|md|markdown|json|csv|py|js|ts|html|css)$/i)) {
-      const textReader = new FileReader();
-      textReader.onload = (e) => setFileTextContent(e.target?.result || '');
-      textReader.readAsText(selectedFile);
-      setFilePreview(null);
-    } else {
-      setFilePreview(null);
-      setFileTextContent('');
-    }
+    const incoming = Array.from(fileList);
+    const newItems = await Promise.all(
+      incoming.map((f, idx) => {
+        return new Promise((resolve) => {
+          const item = {
+            id: `page_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 4)}`,
+            file: f,
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            preview: null,
+            textContent: ''
+          };
+
+          if (f.type?.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              item.preview = e.target.result;
+              resolve(item);
+            };
+            reader.onerror = () => resolve(item);
+            reader.readAsDataURL(f);
+          } else if (f.type?.startsWith('text/') || f.name?.match(/\.(txt|md|markdown|json|csv|py|js|ts|html|css)$/i)) {
+            const textReader = new FileReader();
+            textReader.onload = (e) => {
+              item.textContent = e.target?.result || '';
+              resolve(item);
+            };
+            textReader.onerror = () => resolve(item);
+            textReader.readAsText(f);
+          } else {
+            resolve(item);
+          }
+        });
+      })
+    );
+
+    let updatedFiles = [];
+    setFiles(prev => {
+      updatedFiles = [...prev, ...newItems];
+      return updatedFiles;
+    });
+    setActivePreviewIdx(prev => Math.max(0, updatedFiles.length - newItems.length));
 
     try {
       setIsUploading(true);
-      const res = await api.uploadDocument(selectedFile);
+      const res = await api.uploadDocument(updatedFiles.map(i => i.file));
       if (res?.document_id) {
         setDocumentId(res.document_id);
         retroAudio.playMechanicalLatch?.();
@@ -1135,12 +1203,23 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
     }
   };
 
+  const handleRemovePage = (idToRemove, e) => {
+    e?.stopPropagation();
+    playBlip();
+    setFiles(prev => {
+      const updated = prev.filter(f => f.id !== idToRemove);
+      if (activePreviewIdx >= updated.length) {
+        setActivePreviewIdx(Math.max(0, updated.length - 1));
+      }
+      return updated;
+    });
+  };
+
   const handleClearFile = (e) => {
     e?.stopPropagation();
     playBlip();
-    setFile(null);
-    setFilePreview(null);
-    setFileTextContent('');
+    setFiles([]);
+    setActivePreviewIdx(0);
     setDocumentId(null);
     setGenerationResult(null);
     setErrorMessage(null);
@@ -1152,9 +1231,28 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
     e?.preventDefault();
     playBlip();
     retroAudio.playLaserScan?.();
-    setFile({ name: 'organic_chemistry_alkenes_notes.jpg', size: 492000, type: 'image/jpeg', isSample: true });
-    setFilePreview('/earth_globe_reference.jpg');
-    setFileTextContent('');
+    const sampleItems = [
+      {
+        id: 'sample_page_1',
+        file: { name: 'organic_chemistry_alkenes_page1.jpg', size: 492000, type: 'image/jpeg', isSample: true },
+        name: 'organic_chemistry_alkenes_page1.jpg',
+        size: 492000,
+        type: 'image/jpeg',
+        preview: '/earth_globe_reference.jpg',
+        textContent: ''
+      },
+      {
+        id: 'sample_page_2',
+        file: { name: 'organic_chemistry_alkenes_page2.jpg', size: 380000, type: 'image/jpeg', isSample: true },
+        name: 'organic_chemistry_alkenes_page2.jpg',
+        size: 380000,
+        type: 'image/jpeg',
+        preview: '/earth_globe_reference.jpg',
+        textContent: ''
+      }
+    ];
+    setFiles(sampleItems);
+    setActivePreviewIdx(0);
     setDocumentId('sample_chemistry');
     setErrorMessage(null);
     setGenerationResult(null);
@@ -1162,7 +1260,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
 
   // ── ANALYSE — hits real backend then uses dynamic synthesis ──
   const handleAnalyse = async () => {
-    if (!file && !documentId) return;
+    if (files.length === 0 && !documentId) return;
 
     playBlip();
     retroAudio.playCyberGlitch?.();
@@ -1487,46 +1585,6 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
         />
       )}
 
-      {/* ── HEADER BANNER (CENTERED WITH BALANCED HUD WINGS) ── */}
-      <div className="p-4 sm:p-5 bg-[#070d1c]/90 border border-cyan-500/30 rounded-lg shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col items-center justify-center text-center relative overflow-hidden">
-        <div className="w-full flex items-center justify-center gap-4 relative z-10">
-          {/* Left HUD decorative wing */}
-          <div className="hidden md:flex items-center gap-2 flex-1">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-500/20 to-cyan-500/50"></div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#091325] border border-cyan-500/40 font-mono text-xs text-cyan-300 font-bold tracking-wider whitespace-nowrap shadow-[0_0_8px_rgba(6,182,212,0.2)]">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span>SYS.ONLINE</span>
-            </div>
-            <div className="h-px w-8 bg-cyan-500/50"></div>
-          </div>
-
-          {/* Centered Title & Description */}
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="flex items-center justify-center gap-3">
-              <div className="p-2.5 rounded bg-cyan-950/60 border border-cyan-400/80 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                <Upload className="w-6 h-6" />
-              </div>
-              <h2 className="font-mono font-bold text-cyan-300 uppercase tracking-widest flex items-center gap-2" style={{ fontSize: '30px', letterSpacing: '0.12em', textShadow: '0 0 16px rgba(6,182,212,0.6)' }}>
-                <span>KNOWLEDGE INGESTION TERMINAL</span>
-              </h2>
-            </div>
-            <p className="font-mono text-slate-300 mt-1 max-w-2xl text-center" style={{ fontSize: '16px', letterSpacing: '0.04em' }}>
-              Upload your notes, diagrams, or scans — Syntropy will map them into an interactive learning world.
-            </p>
-          </div>
-
-          {/* Right HUD decorative wing */}
-          <div className="hidden md:flex items-center gap-2 flex-1">
-            <div className="h-px w-8 bg-cyan-500/50"></div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#091325] border border-cyan-500/40 font-mono text-xs text-cyan-300 font-bold tracking-wider whitespace-nowrap shadow-[0_0_8px_rgba(6,182,212,0.2)]">
-              <span>PIPELINE // READY</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            </div>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-cyan-500/20 to-cyan-500/50"></div>
-          </div>
-        </div>
-      </div>
-
       {/* ═══════════════════════════════════════════════════════
           RESULT VIEW
       ═══════════════════════════════════════════════════════ */}
@@ -1575,15 +1633,6 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
               >
                 <Compass className="w-3.5 h-3.5" />
                 <span>2D REALM</span>
-              </button>
-
-              {/* Enter Biology Lab */}
-              <button
-                onClick={() => handleEnterRealm('biology')}
-                className="px-2.5 py-1.5 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 hover:bg-cyan-500/30 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer font-mono"
-              >
-                <Map className="w-3.5 h-3.5" />
-                <span>BIOLOGY LAB</span>
               </button>
 
               {/* Analyse Notes / Upload Another */}
@@ -2195,7 +2244,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                     className={`syn-upload flex flex-1 cursor-pointer items-center justify-center overflow-hidden ${isDragging ? 'border-cyan-300 bg-cyan-950/20' : ''}`}
                     style={{ minHeight: 0, padding: '28px' }}
                   >
-                    <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.pdf,.webp,.txt,.md,.json" onChange={handleFileChange} className="hidden" />
+                    <input ref={fileInputRef} type="file" multiple accept=".png,.jpg,.jpeg,.pdf,.webp,.txt,.md,.json" onChange={handleFileChange} className="hidden" />
                     <span className="syn-corner tl" /><span className="syn-corner tr" />
                     <span className="syn-corner bl" /><span className="syn-corner br" />
                     <span className="absolute left-3 top-2 font-mono text-[8px] text-slate-700">SYS://INPUT</span>
@@ -2203,55 +2252,121 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                     <span className="absolute bottom-2 left-3 font-mono text-[8px] text-slate-700">READY</span>
                     <span className="absolute bottom-2 right-3 font-mono text-[8px] text-slate-700">LOCAL_IO</span>
 
-                    {file ? (
-                      <div className="flex w-full flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                        {filePreview ? (
-                          <div className="relative max-w-full overflow-hidden border border-cyan-400/60 bg-black">
-                            <img src={filePreview} alt="Preview" className="max-h-[280px] max-w-full object-contain" />
-                            <button onClick={handleClearFile} className="absolute right-2 top-2 border border-rose-400 bg-black/90 p-1.5 text-rose-300 cursor-pointer hover:bg-rose-950/50 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
+                    {files.length > 0 ? (
+                      <div className="flex w-full flex-col gap-2.5" onClick={(e) => e.stopPropagation()}>
+                        {/* Top bar: Multi-page batch status & controls */}
+                        <div className="flex items-center justify-between gap-2 bg-[#050e1c] p-2 rounded border border-cyan-500/30">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/60 font-mono text-[10px] font-bold text-cyan-300">
+                              {files.length} {files.length === 1 ? 'PAGE' : 'PAGES'} IN BATCH
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-400">
+                              {(files.reduce((acc, f) => acc + (f.size || 0), 0) / 1024).toFixed(1)} KB TOTAL
+                            </span>
                           </div>
-                        ) : (
-                          <div className="relative w-full max-w-sm p-4 border border-cyan-400/60 bg-[#081324] flex items-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
-                            <div className="p-3 bg-cyan-950/70 border border-cyan-500/40 text-cyan-300">
-                              <FileText className="w-7 h-7" />
-                            </div>
-                            <div className="min-w-0 flex-1 text-left">
-                              <div className="font-mono text-sm font-bold text-white truncate">{file.name}</div>
-                              <div className="font-mono text-[10px] text-cyan-400 mt-0.5">
-                                {(file.size / 1024).toFixed(1)} KB <span className="mx-1 text-slate-600">|</span> PIPELINE READY
-                              </div>
-                            </div>
-                            <button onClick={handleClearFile} className="border border-rose-400 bg-black/90 p-1.5 text-rose-300 cursor-pointer hover:bg-rose-950/50 transition-colors">
-                              <X className="h-3.5 w-3.5" />
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="px-2.5 py-1 rounded bg-cyan-500/20 border border-cyan-400/70 text-cyan-300 hover:bg-cyan-500/40 font-mono text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-[0_0_8px_rgba(6,182,212,0.2)]"
+                            >
+                              <span>+ ADD PAGES</span>
                             </button>
-                          </div>
-                        )}
-                        <div className="text-center">
-                          <div className="font-mono text-xs font-bold text-white">{file.name}</div>
-                          <div className="mt-1 font-mono text-[9px] text-cyan-400">
-                            {(file.size / 1024).toFixed(1)} KB
-                            <span className="mx-2 text-slate-600">|</span>
-                            {documentId ? `DOC:${String(documentId).substring(0, 14)}` : 'PIPELINE READY'}
+                            <button
+                              type="button"
+                              onClick={handleClearFile}
+                              className="px-2 py-1 rounded bg-rose-950/40 border border-rose-500/50 text-rose-300 hover:bg-rose-900/60 font-mono text-[9px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <span>CLEAR ALL</span>
+                            </button>
                           </div>
                         </div>
-                        <button onClick={() => fileInputRef.current?.click()} className="font-mono text-[9px] uppercase text-slate-500 underline hover:text-cyan-300">
-                          [ SELECT DIFFERENT SOURCE ]
-                        </button>
+
+                        {/* Multi-page Thumbnail Strip */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+                          {files.map((item, idx) => {
+                            const isCur = activePreviewIdx === idx;
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => { playBlip(); setActivePreviewIdx(idx); }}
+                                className={`group relative shrink-0 p-1 rounded border cursor-pointer transition-all flex flex-col items-center w-20 bg-[#091325] ${
+                                  isCur
+                                    ? 'border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)] bg-cyan-950/40'
+                                    : 'border-slate-800 hover:border-slate-600 opacity-75 hover:opacity-100'
+                                }`}
+                              >
+                                {item.preview ? (
+                                  <img src={item.preview} alt={`Page ${idx + 1}`} className="w-16 h-16 object-cover rounded bg-black" />
+                                ) : (
+                                  <div className="w-16 h-16 rounded bg-[#0f1d33] flex items-center justify-center text-cyan-400 border border-cyan-900">
+                                    <FileText className="w-6 h-6" />
+                                  </div>
+                                )}
+                                <span className="font-mono text-[9px] font-bold text-slate-300 mt-1 truncate max-w-full px-1">
+                                  PAGE {idx + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRemovePage(item.id, e)}
+                                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 hover:bg-rose-500 transition-opacity cursor-pointer"
+                                  title="Remove this page"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            );
+                          })}
+
+                          {/* Quick Append Button Tile */}
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="shrink-0 w-16 h-20 rounded border border-dashed border-cyan-500/40 hover:border-cyan-400 bg-[#061020]/60 flex flex-col items-center justify-center gap-1 text-cyan-300 font-mono text-[9px] cursor-pointer hover:bg-cyan-950/30 transition-all"
+                            title="Add more pages"
+                          >
+                            <span className="text-base font-bold leading-none">+</span>
+                            <span>ADD PAGE</span>
+                          </button>
+                        </div>
+
+                        {/* Active Page Preview Card */}
+                        {files[activePreviewIdx]?.preview ? (
+                          <div className="relative max-w-full overflow-hidden border border-cyan-400/60 bg-black rounded">
+                            <img src={files[activePreviewIdx].preview} alt="Active Page Preview" className="max-h-[220px] max-w-full object-contain mx-auto" />
+                            <div className="absolute bottom-1 left-2 font-mono text-[9px] text-cyan-300 bg-black/80 px-2 py-0.5 rounded border border-cyan-500/40">
+                              PAGE {activePreviewIdx + 1} OF {files.length}: {files[activePreviewIdx].name}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative w-full p-3 border border-cyan-400/60 bg-[#081324] flex items-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.15)] rounded">
+                            <div className="p-2.5 bg-cyan-950/70 border border-cyan-500/40 text-cyan-300">
+                              <FileText className="w-6 h-6" />
+                            </div>
+                            <div className="min-w-0 flex-1 text-left">
+                              <div className="font-mono text-sm font-bold text-white truncate">
+                                Page {activePreviewIdx + 1}: {files[activePreviewIdx]?.name}
+                              </div>
+                              <div className="font-mono text-[10px] text-cyan-400 mt-0.5">
+                                {((files[activePreviewIdx]?.size || 0) / 1024).toFixed(1)} KB <span className="mx-1 text-slate-600">|</span> READY TO ANALYSE
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex max-w-lg flex-col items-center text-center">
-                        <div className="mb-5 flex h-[72px] w-[72px] items-center justify-center border border-cyan-300 bg-[#081728] text-cyan-200 shadow-[0_0_22px_rgba(0,230,255,.22)]">
-                          <Upload className="h-8 w-8 stroke-[1.8]" />
+                        <div className="mb-4 flex h-[64px] w-[64px] items-center justify-center border border-cyan-300 bg-[#081728] text-cyan-200 shadow-[0_0_22px_rgba(0,230,255,.22)]">
+                          <Upload className="h-7 w-7 stroke-[1.8]" />
                         </div>
                         <h3 className="syn-cyan-glow font-pixel text-base font-black tracking-wide text-cyan-100 uppercase">
-                          UPLOAD YOUR NOTES
+                          UPLOAD NOTES &amp; MULTIPLE PAGES
                         </h3>
-                        <p className="mt-2 max-w-md font-mono leading-relaxed text-slate-400" style={{fontSize:'15px'}}>
-                          Drag &amp; drop handwritten notes, diagrams or scans here, or click to browse files.
+                        <p className="mt-1.5 max-w-md font-mono leading-relaxed text-slate-400" style={{fontSize:'15px'}}>
+                          Drag &amp; drop single or multi-page notes, diagrams, or scans here, or click to browse.
                         </p>
-                        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                           <span className="mr-1 font-mono text-xs font-bold text-slate-300 tracking-wider">ACCEPTS:</span>
                           {['PNG', 'JPG', 'PDF', 'WEBP', 'TXT', 'MD'].map((fmt) => (
                             <span
@@ -2261,6 +2376,10 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
                               {fmt}
                             </span>
                           ))}
+                        </div>
+                        <div className="mt-3 flex items-center gap-1.5 font-mono text-[10px] text-cyan-400/80">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                          <span>MULTI-PAGE UPLOADS SUPPORTED</span>
                         </div>
                       </div>
                     )}

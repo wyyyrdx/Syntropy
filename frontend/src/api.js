@@ -78,10 +78,16 @@ export const api = {
     return await res.json();
   },
 
-  // Ingestion: Upload file (PNG, JPG, PDF, WEBP)
-  uploadDocument: async (file) => {
+  // Ingestion: Upload file(s) (PNG, JPG, PDF, WEBP, TXT, MD)
+  uploadDocument: async (files) => {
     const formData = new FormData();
-    formData.append('file', file);
+    if (Array.isArray(files)) {
+      files.forEach((f) => formData.append('files', f));
+      if (files[0]) formData.append('file', files[0]);
+    } else {
+      formData.append('file', files);
+      formData.append('files', files);
+    }
 
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',

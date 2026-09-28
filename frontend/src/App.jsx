@@ -228,12 +228,36 @@ export default function App() {
 
         {/* Brand Center */}
         <div 
-          onClick={() => handleSwitchSpace('upload')}
-          className="absolute left-1/2 -translate-x-1/2 text-center cursor-pointer"
+          onClick={() => {
+            retroAudio.playBlip?.();
+            handleSwitchSpace('upload');
+          }}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2.5 cursor-pointer group py-1 px-3 rounded-lg border border-cyan-500/25 bg-[#050a16]/90 backdrop-blur-md hover:border-cyan-400 hover:bg-cyan-950/40 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.18)] hover:shadow-[0_0_30px_rgba(6,182,212,0.45)]"
+          title="Syntropy AI Matrix — Click to return to Ingestion Terminal"
         >
-          <h1 className="font-mono font-black tracking-[0.25em] text-white drop-shadow-[0_0_12px_rgba(6,182,212,0.85)]" style={{ fontSize: '22px' }}>
-            SYNTROPY
-          </h1>
+          {/* Animated Neon Emblem */}
+          <div className="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded bg-gradient-to-br from-cyan-400 via-teal-400 to-indigo-600 p-[1.5px] shadow-[0_0_12px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform shrink-0">
+            <div className="w-full h-full bg-[#050a16] rounded-[3px] flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-300 animate-pulse" />
+            </div>
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-black animate-ping"></span>
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-black"></span>
+          </div>
+
+          <div className="flex flex-col items-start text-left">
+            <div className="flex items-center gap-1.5 leading-none">
+              <h1 className="font-mono font-black tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 drop-shadow-[0_0_12px_rgba(6,182,212,0.85)] text-[18px] sm:text-[20px] group-hover:tracking-[0.3em] transition-all duration-300">
+                SYNTROPY
+              </h1>
+              <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-950/90 border border-cyan-400/50 text-cyan-300 tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                AI.OS
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5 text-[8px] font-mono text-cyan-400/70 tracking-[0.14em]">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span>COGNITIVE REALM ENGINE</span>
+            </div>
+          </div>
         </div>
 
         {/* Top Right: Player Level, Sound & CRT Toggles */}

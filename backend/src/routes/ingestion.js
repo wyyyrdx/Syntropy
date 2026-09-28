@@ -16,11 +16,7 @@ const router = express.Router();
  *     summary: Ingest and upload notes/diagrams/PDF
  *     tags: [Ingestion]
  */
-router.post('/upload', upload.single('file'), (req, res, next) => {
-  // If field wasn't 'file', fallback to checking 'image'
-  if (!req.file && req.files?.image) {
-    req.file = req.files.image;
-  }
+router.post('/upload', upload.any(), (req, res, next) => {
   uploadDocument(req, res, next);
 });
 

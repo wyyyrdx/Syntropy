@@ -10,25 +10,29 @@ const { generateConceptGraph } = require('../../ai/generate');
  */
 async function uploadDocument(req, res) {
   try {
-    const file = req.file;
-    if (!file) {
+    const rawFiles = Array.isArray(req.files) && req.files.length > 0 
+      ? req.files 
+      : (req.file ? [req.file] : []);
+
+    if (rawFiles.length === 0) {
       return res.status(400).json({
         success: false,
-        error: "No file provided. Please upload a file with field name 'file' or 'image'."
+        error: "No file provided. Please upload one or more files."
       });
     }
 
+    const primaryFile = rawFiles[0];
     const documentId = `doc_${uuidv4().substring(0, 12)}`;
-    const filename = file.originalname || path.basename(file.path);
-    const fileType = file.mimetype || 'application/octet-stream';
-    const fileSize = file.size || 0;
-    const filePath = file.path;
+    const filename = primaryFile.originalname || path.basename(primaryFile.path);
+    const fileType = primaryFile.mimetype || 'application/octet-stream';
+    const totalSize = rawFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+    const filePath = primaryFile.path;
 
     // Insert into documents table
     db.prepare(
       `INSERT INTO documents (id, filename, file_type, file_size, file_path, status)
        VALUES (?, ?, ?, ?, ?, 'ready')`
-    ).run(documentId, filename, fileType, fileSize, filePath);
+    ).run(documentId, filename, fileType, totalSize, filePath);
 
     // Also link to sessions & notes for backward compatibility
     try {
@@ -40,9 +44,13 @@ async function uploadDocument(req, res) {
       db.prepare(
         `INSERT OR IGNORE INTO sessions (id, user_id, status) VALUES (?, ?, 'pending')`
       ).run(sessionId, userId);
-      db.prepare(
-        `INSERT OR IGNORE INTO notes (id, session_id, image_path, subject_title) VALUES (?, ?, ?, ?)`
-      ).run(uuidv4(), sessionId, filePath, filename);
+
+      rawFiles.forEach((f, idx) => {
+        const pageTitle = rawFiles.length > 1 ? `${filename} (Page ${idx + 1})` : filename;
+        db.prepare(
+          `INSERT OR IGNORE INTO notes (id, session_id, image_path, subject_title) VALUES (?, ?, ?, ?)`
+        ).run(uuidv4(), sessionId, f.path, pageTitle);
+      });
     } catch (sessionErr) {
       console.warn('[ingestionController] Legacy session link notice:', sessionErr.message);
     }
@@ -51,8 +59,9 @@ async function uploadDocument(req, res) {
       success: true,
       document_id: documentId,
       filename,
+      page_count: rawFiles.length,
       file_type: fileType,
-      file_size: fileSize,
+      file_size: totalSize,
       status: 'ready'
     });
   } catch (err) {
