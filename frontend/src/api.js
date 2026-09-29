@@ -2,8 +2,9 @@
  * Syntropy API Client Utilities
  */
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
+const configuredApiUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '');
+const API_BASE = configuredApiUrl
+  ? (configuredApiUrl.endsWith('/api') ? configuredApiUrl : `${configuredApiUrl}/api`)
   : '/api';
 
 function getAuthHeaders() {
@@ -18,7 +19,7 @@ function getAuthHeaders() {
 async function parseResponse(res, fallbackMessage) {
   const contentType = res.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    throw new Error('BACKEND_OFFLINE');
+    throw new Error('The Syntropy backend is unavailable. Check the frontend API URL and backend deployment.');
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -44,57 +45,22 @@ export const api = {
 
   // User Registration
   register: async (email, password) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      return await parseResponse(res, 'Registration failed');
-    } catch (err) {
-      // If backend is not deployed on Vercel or is offline, provide immediate seamless session
-      if (err.message === 'BACKEND_OFFLINE' || err.name === 'TypeError' || err.message?.includes('Failed to fetch')) {
-        const normalizedEmail = (email || '').trim().toLowerCase();
-        const displayName = normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ') || 'Learner';
-        return {
-          token: 'offline-token-' + Date.now(),
-          user: {
-            id: 'user-' + Date.now(),
-            email: normalizedEmail,
-            display_name: displayName
-          },
-          is_offline_demo: true
-        };
-      }
-      throw err;
-    }
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return parseResponse(res, 'Registration failed');
   },
 
   // User Login
   login: async (email, password) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      return await parseResponse(res, 'Login failed');
-    } catch (err) {
-      if (err.message === 'BACKEND_OFFLINE' || err.name === 'TypeError' || err.message?.includes('Failed to fetch')) {
-        const normalizedEmail = (email || '').trim().toLowerCase();
-        const displayName = normalizedEmail.split('@')[0].replace(/[._-]+/g, ' ') || 'Learner';
-        return {
-          token: 'offline-token-' + Date.now(),
-          user: {
-            id: 'user-' + Date.now(),
-            email: normalizedEmail,
-            display_name: displayName
-          },
-          is_offline_demo: true
-        };
-      }
-      throw err;
-    }
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return parseResponse(res, 'Login failed');
   },
 
   // Note Upload
@@ -124,14 +90,12 @@ export const api = {
     return parseResponse(res, 'Failed to fetch note status');
   },
 
-  // Ingestion: Upload file(s) (PNG, JPG, PDF, WEBP, TXT, MD)
+  // Ingestion: Upload note file(s) (PNG, JPG, PDF, WEBP)
   uploadDocument: async (files) => {
     const formData = new FormData();
     if (Array.isArray(files)) {
       files.forEach((f) => formData.append('files', f));
-      if (files[0]) formData.append('file', files[0]);
     } else {
-      formData.append('file', files);
       formData.append('files', files);
     }
 
@@ -168,50 +132,16 @@ export const api = {
   },
 
   getProfile: async () => {
-    try {
-      const res = await fetch(`${API_BASE}/profile`, { headers: getAuthHeaders() });
-      return await parseResponse(res, 'Failed to load profile');
-    } catch {
-      // Local profile fallback when backend is offline
-      let user = { email: 'learner@example.com', display_name: 'Learner' };
-      try {
-        const session = JSON.parse(localStorage.getItem('syntropy_auth') || '{}');
-        if (session?.user) user = session.user;
-      } catch {}
-
-      let stats = { xp: 770, level: 4, completedQuizzes: [] };
-      try {
-        const saved = JSON.parse(localStorage.getItem('syntropy_player_stats') || '{}');
-        if (saved?.level) stats = saved;
-      } catch {}
-
-      return {
-        user,
-        stats: {
-          notes: 0,
-          generated: 0,
-          quizzes: stats.completedQuizzes?.length || 0,
-          streak: 1
-        },
-        progress: stats,
-        activity: [
-          { date: new Date().toISOString().split('T')[0], count: 1 }
-        ],
-        notes: []
-      };
-    }
+    const res = await fetch(`${API_BASE}/profile`, { headers: getAuthHeaders() });
+    return parseResponse(res, 'Failed to load profile');
   },
 
   updateProgress: async (xp, completedQuizzes) => {
-    try {
-      const res = await fetch(`${API_BASE}/profile/progress`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ xp, completed_quizzes: completedQuizzes })
-      });
-      return await parseResponse(res, 'Failed to save progress');
-    } catch {
-      return { ok: true };
-    }
+    const res = await fetch(`${API_BASE}/profile/progress`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ xp, completed_quizzes: completedQuizzes })
+    });
+    return parseResponse(res, 'Failed to save progress');
   }
 };

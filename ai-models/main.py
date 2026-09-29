@@ -1,52 +1,30 @@
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
 import os
 import sys
+import tempfile
+from pathlib import Path
+from typing import List
 
-# Import the extraction logic and schema from prompt_to_3d
-from prompt_to_3d import extract_from_image, SyntropyConceptGraph, load_env_file
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 
-# Preload environment variables from .env files
+from prompt_to_3d import SyntropyConceptGraph, extract_from_files, load_env_file
+
 load_env_file()
 
 app = FastAPI(
     title="Syntropy AI Extraction Service",
-    description="Multimodal AI service for extracting 3D Concept Graphs and Quiz Questions from notes",
-    version="1.0.0"
+    description="Multimodal AI service for extracting concept graphs and quiz questions from notes",
+    version="1.1.0",
 )
 
-class GenerateRequest(BaseModel):
-    image_path: str
+SUPPORTED_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+}
+MAX_FILES = 12
+MAX_FILE_BYTES = 25 * 1024 * 1024
 
-def resolve_image_path(raw_path: str) -> str:
-    """
-    Intelligently resolves image paths across Docker volumes, local uploads, and relative paths.
-    """
-    # 1. Direct match (absolute or current working directory relative)
-    if os.path.exists(raw_path):
-        return os.path.abspath(raw_path)
-
-    # 2. Extract base filename and search candidate storage locations
-    filename = os.path.basename(raw_path.replace("\\", "/"))
-    candidates = [
-        # Docker shared upload mount
-        os.path.join("/app", "uploads", filename),
-        # Backend uploads folder when running from repo root or ai-models
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "uploads", filename)),
-        os.path.abspath(os.path.join(os.getcwd(), "backend", "uploads", filename)),
-        os.path.abspath(os.path.join(os.getcwd(), "uploads", filename)),
-        # Frontend public directory
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "public", filename)),
-        os.path.abspath(os.path.join(os.getcwd(), "frontend", "public", filename)),
-        # Local to current directory or script
-        os.path.abspath(os.path.join(os.path.dirname(__file__), filename)),
-        os.path.abspath(os.path.join(os.getcwd(), filename)),
-    ]
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return candidate
-
-    return raw_path
 
 @app.get("/")
 @app.get("/health")
@@ -58,28 +36,47 @@ async def health_check():
         "service": "Syntropy AI Extraction Service",
         "gemini_api_key_configured": api_key_set,
         "mock_mode": mock_mode,
-        "active_model": os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),
+        "active_model": os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite"),
     }
 
+
 @app.post("/generate", response_model=SyntropyConceptGraph)
-async def generate_graph(request: GenerateRequest, mock: bool = Query(default=False)):
-    print(f"[Syntropy AI Service] Received request for image: '{request.image_path}'")
-
-    resolved_path = resolve_image_path(request.image_path)
-    
-    # Verify image existence after resolution
-    if not os.path.exists(resolved_path):
-        error_msg = f"Image not found at path: {request.image_path} (checked candidates for {os.path.basename(request.image_path)})"
-        print(f"[Syntropy AI Service] Error: {error_msg}", file=sys.stderr)
-        raise HTTPException(status_code=400, detail=error_msg)
-
-    if mock:
-        os.environ["MOCK_AI"] = "true"
+async def generate_graph(
+    files: List[UploadFile] = File(...),
+    mock: bool = Query(default=False),
+):
+    if not files or len(files) > MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"Upload between 1 and {MAX_FILES} note files.")
 
     try:
-        graph_data = extract_from_image(resolved_path)
-        print(f"[Syntropy AI Service] Successfully generated graph for '{request.image_path}' with {len(graph_data.nodes)} nodes and {len(graph_data.edges)} edges.")
-        return graph_data
-    except Exception as e:
-        print(f"[Syntropy AI Service] Extraction failed: {e}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail=str(e))
+        with tempfile.TemporaryDirectory(prefix="syntropy-notes-") as temp_dir:
+            inputs = []
+            for index, upload in enumerate(files):
+                content_type = (upload.content_type or "").lower()
+                suffix = SUPPORTED_TYPES.get(content_type)
+                if not suffix:
+                    raise HTTPException(
+                        status_code=415,
+                        detail=f"Unsupported file type for {upload.filename or 'upload'}: {content_type or 'unknown'}",
+                    )
+
+                content = await upload.read(MAX_FILE_BYTES + 1)
+                if len(content) > MAX_FILE_BYTES:
+                    raise HTTPException(status_code=413, detail=f"{upload.filename or 'File'} exceeds 25 MB.")
+                if not content:
+                    raise HTTPException(status_code=400, detail=f"{upload.filename or 'File'} is empty.")
+
+                local_path = Path(temp_dir) / f"page-{index + 1}{suffix}"
+                local_path.write_bytes(content)
+                inputs.append((str(local_path), content_type))
+
+            graph_data = extract_from_files(inputs, force_mock=mock)
+            print(
+                f"[Syntropy AI Service] Generated {len(graph_data.nodes)} nodes from {len(inputs)} file(s)."
+            )
+            return graph_data
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"[Syntropy AI Service] Extraction failed: {exc}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

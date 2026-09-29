@@ -32,7 +32,7 @@ function fileFilter(req, file, cb) {
   const mimetypeOk = ALLOWED_MIME_TYPES.has(file.mimetype);
   const extensionOk = ALLOWED_EXTENSIONS.has(ext);
 
-  if (!mimetypeOk && !extensionOk) {
+  if (!mimetypeOk || !extensionOk) {
     return cb(new Error('Unsupported file type. Only PNG, JPG, PDF, or WEBP files are allowed.'));
   }
   cb(null, true);
@@ -41,7 +41,7 @@ function fileFilter(req, file, cb) {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: MAX_FILE_SIZE_BYTES }
+  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 12 }
 });
 
 module.exports = { upload, UPLOAD_DIR };

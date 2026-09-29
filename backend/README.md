@@ -60,7 +60,7 @@ Server runs on `http://localhost:3000` by default.
 | `UPLOAD_DIR` | Where uploaded images are stored | `./uploads` |
 | `JWT_SECRET` | Secret used to sign auth tokens | any long random string |
 | `AI_SERVICE_URL` | Full URL to the AI engineer's `/generate` endpoint | `http://localhost:8000/generate` |
-| `AI_UPLOADS_PATH_PREFIX` | Path prefix the AI service uses to find the uploaded image. Use `/app/uploads` for the future docker-compose setup, or the absolute local path to this backend's `uploads/` folder when running the AI service natively (no Docker) on the same machine | `C:/Users/you/Syntropy/backend/uploads` |
+| `AI_SERVICE_TIMEOUT_MS` | Maximum time to wait for multimodal analysis | `120000` |
 | `GEMINI_API_KEY` | Only needed if you're running the AI service yourself locally (its own env, not this backend's) | — |
 
 ## Running the AI service locally (no Docker)
@@ -98,7 +98,7 @@ All protected routes expect `Authorization: Bearer <token>`. A session's data is
 
 ## AI service contract (confirmed with AI engineer)
 
-- Endpoint: `POST /generate`, body `{ "image_path": "<path as seen by the AI service>" }`
+- Endpoint: `POST /generate`, multipart body with one or more `files` fields. The backend transfers file bytes, so the services do not need shared storage.
 - Success: full concept graph JSON (`subject_title`, `raw_transcription`, `nodes`, `edges`, `questions`)
 - Failure: FastAPI `HTTPException` → `{ "detail": "..." }`
 - Timeout: 60s client-side (extraction usually takes 10-15s)

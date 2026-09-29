@@ -14,7 +14,7 @@ services:
       - UPLOAD_DIR=/usr/src/app/uploads
       - JWT_SECRET=${JWT_SECRET}
       - AI_SERVICE_URL=http://ai-service:8000/generate
-      - AI_UPLOADS_PATH_PREFIX=/app/uploads
+      - AI_SERVICE_TIMEOUT_MS=120000
     depends_on:
       - ai-service
 
@@ -22,7 +22,6 @@ services:
     build: ./ai-models
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend/uploads:/app/uploads
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}

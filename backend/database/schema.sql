@@ -74,6 +74,16 @@ CREATE TABLE IF NOT EXISTS documents (
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS document_pages (
+  id            TEXT PRIMARY KEY,
+  document_id   TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  page_number   INTEGER NOT NULL,
+  filename      TEXT NOT NULL,
+  file_type     TEXT NOT NULL,
+  file_path     TEXT NOT NULL,
+  UNIQUE(document_id, page_number)
+);
+
 CREATE TABLE IF NOT EXISTS generation_jobs (
   id            TEXT PRIMARY KEY,
   user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,

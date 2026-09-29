@@ -3,9 +3,10 @@ import os
 import re
 import json
 import argparse
-from typing import List, Literal, Optional
+import mimetypes
+from pathlib import Path
+from typing import List, Literal, Optional, Tuple
 from pydantic import BaseModel, Field, model_validator
-from PIL import Image
 from google import genai
 from google.genai import types
 
@@ -100,7 +101,7 @@ class SyntropyConceptGraph(BaseModel):
 # ==========================================
 
 SYSTEM_PROMPT = """You are the core AI Knowledge Engine for Syntropy.
-Your task is to analyze images of messy handwritten notes and convert them into a structured 3D Concept Graph.
+Your task is to analyze one or more ordered note images or PDF documents and convert them into a structured Concept Graph.
 
 Strict Execution Steps:
 1. Transcription: Accurately read and transcribe all handwritten text.
@@ -167,13 +168,24 @@ def get_mock_graph() -> SyntropyConceptGraph:
         ]
     )
 
-def extract_from_image(image_path: str, output_file: Optional[str] = None) -> SyntropyConceptGraph:
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Image not found at path: {image_path}")
+SUPPORTED_INPUT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+
+
+def extract_from_files(
+    file_inputs: List[Tuple[str, Optional[str]]],
+    output_file: Optional[str] = None,
+    force_mock: bool = False,
+) -> SyntropyConceptGraph:
+    if not file_inputs:
+        raise ValueError("At least one note image or PDF is required.")
+
+    for file_path, _ in file_inputs:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Note file not found at path: {file_path}")
 
     load_env_file()
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    mock_enabled = os.environ.get("MOCK_AI", "").lower() in ("true", "1", "yes")
+    mock_enabled = force_mock or os.environ.get("MOCK_AI", "").lower() in ("true", "1", "yes")
 
     if not api_key:
         if mock_enabled:
@@ -191,17 +203,26 @@ def extract_from_image(image_path: str, output_file: Optional[str] = None) -> Sy
             )
 
     client = genai.Client(api_key=api_key)
-    image = Image.open(image_path).convert("RGB")
 
-    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    content_parts = []
+    for file_path, supplied_mime_type in file_inputs:
+        mime_type = supplied_mime_type or mimetypes.guess_type(file_path)[0]
+        if mime_type not in SUPPORTED_INPUT_TYPES:
+            raise ValueError(f"Unsupported note file type: {mime_type or Path(file_path).suffix}")
+        content_parts.append(types.Part.from_bytes(data=Path(file_path).read_bytes(), mime_type=mime_type))
+
+    content_parts.append(
+        "The attached files are ordered pages from the same set of notes. "
+        "Transcribe all pages, then extract the complete concept graph, relationships, and quiz questions."
+    )
+
+    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     models_to_try = list(dict.fromkeys([
         preferred_model,
-        "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-flash-latest",
-        "gemini-3.8-flash",
-        "gemini-3.7-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
     ]))
 
     last_error = None
@@ -211,10 +232,7 @@ def extract_from_image(image_path: str, output_file: Optional[str] = None) -> Sy
         try:
             response = client.models.generate_content(
                 model=model_name,
-                contents=[
-                    image,
-                    "Extract the full 3D concept graph, transcription, relationships, and quiz questions from these notes."
-                ],
+                contents=content_parts,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     response_mime_type="application/json",
@@ -249,9 +267,14 @@ def extract_from_image(image_path: str, output_file: Optional[str] = None) -> Sy
 
     return graph_data
 
+
+def extract_from_image(image_path: str, output_file: Optional[str] = None) -> SyntropyConceptGraph:
+    """Backward-compatible wrapper for scripts that process one image."""
+    return extract_from_files([(image_path, mimetypes.guess_type(image_path)[0])], output_file)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract Concept Graph from handwritten notes.")
-    parser.add_argument("image_path", help="Path to the handwritten note image")
+    parser = argparse.ArgumentParser(description="Extract a Concept Graph from note images or PDFs.")
+    parser.add_argument("input_paths", nargs="+", help="Ordered paths to note images or PDFs")
     parser.add_argument("--out", help="Optional output JSON file path", default=None)
     parser.add_argument("--mock", action="store_true", help="Force offline mock mode without calling Gemini API")
 
@@ -261,7 +284,8 @@ if __name__ == "__main__":
         os.environ["MOCK_AI"] = "true"
 
     try:
-        result = extract_from_image(args.image_path, args.out)
+        inputs = [(input_path, mimetypes.guess_type(input_path)[0]) for input_path in args.input_paths]
+        result = extract_from_files(inputs, args.out)
         print(result.model_dump_json(indent=2))
     except Exception as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)

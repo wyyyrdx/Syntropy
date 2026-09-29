@@ -58,7 +58,7 @@ flowchart TD
     Upload --> NoteCtrl
     NoteCtrl -->|Persist session 'pending'| DB
     NoteCtrl -->|Spawn background task| Worker
-    Worker -->|POST /generate image_path| FastAPIApp
+    Worker -->|POST /generate multipart file bytes| FastAPIApp
     FastAPIApp --> PromptPipeline
     PromptPipeline -->|Vision Prompt| Gemini
     Gemini -->|Structured JSON| PydanticSchema
@@ -198,7 +198,7 @@ UPLOAD_DIR=./uploads
 
 # AI microservice endpoint
 AI_SERVICE_URL=http://localhost:8000/generate
-AI_SERVICE_TIMEOUT_MS=60000
+AI_SERVICE_TIMEOUT_MS=120000
 
 # JWT Authentication Secret
 JWT_SECRET=your_super_secret_jwt_key_here
@@ -227,9 +227,20 @@ cd frontend
 # Install dependencies
 npm install
 
+# Point the frontend at the backend API
+cp .env.example .env
+
 # Launch Vite dev server
 npm run dev
 ```
+
+For production, deploy all three services and configure their public/private connections:
+
+- Frontend: `VITE_API_URL=https://your-backend.example.com/api`
+- Backend: `AI_SERVICE_URL=https://your-ai-service.example.com/generate`, `AI_SERVICE_TIMEOUT_MS=120000`, a persistent `DB_PATH`/`UPLOAD_DIR`, `JWT_SECRET`, and `CORS_ORIGIN`
+- AI service: `GEMINI_API_KEY` and optionally `GEMINI_MODEL=gemini-3.1-flash-lite`
+
+`VITE_API_URL` is a Vite build-time variable, so redeploy the frontend after changing it. The backend now transfers note bytes directly to the AI service; the two deployed services do not need a shared filesystem.
 
 ---
 
@@ -416,8 +427,8 @@ cd ai-models
 # 1. Standalone OCR transcription
 python ocr.py /path/to/notes.jpg
 
-# 2. Extract full concept graph directly to JSON file
-python prompt_to_3d.py /path/to/notes.jpg --output my_graph.json
+# 2. Extract a full concept graph from one or more ordered pages
+python prompt_to_3d.py /path/to/page-1.jpg /path/to/page-2.pdf --out my_graph.json
 ```
 
 ---

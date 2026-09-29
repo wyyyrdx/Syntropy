@@ -35,6 +35,21 @@ async function uploadDocument(req, res) {
        VALUES (?, ?, ?, ?, ?, ?, 'ready')`
     ).run(documentId, req.user.id, filename, fileType, totalSize, filePath);
 
+    const insertPage = db.prepare(
+      `INSERT INTO document_pages (id, document_id, page_number, filename, file_type, file_path)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    rawFiles.forEach((file, index) => {
+      insertPage.run(
+        uuidv4(),
+        documentId,
+        index + 1,
+        file.originalname || path.basename(file.path),
+        file.mimetype || 'application/octet-stream',
+        file.path
+      );
+    });
+
     // Also link to sessions & notes for backward compatibility
     try {
       const sessionId = documentId;
@@ -79,6 +94,7 @@ async function uploadDocument(req, res) {
  * 'explanation' (2D Dossier) | 'graph' (Concept Matrix) | 'world' (2D RPG Realm)
  */
 async function generateKnowledge(req, res) {
+  let jobId = null;
   try {
     const { document_id, mode = 'graph' } = req.body;
 
@@ -100,27 +116,29 @@ async function generateKnowledge(req, res) {
     }
 
     // Lookup document
-    let docPath = null;
+    let docPaths = [];
     let docTitle = 'Organic Chemistry: Alkenes';
 
     if (document_id === 'sample_chemistry') {
-      docPath = path.resolve(__dirname, '../../../frontend/public/earth_globe_reference.jpg');
       docTitle = 'Organic Chemistry: Alkenes Preparation & Properties';
     } else {
       const doc = db.prepare(`SELECT * FROM documents WHERE id = ? AND user_id = ?`)
         .get(document_id, req.user.id);
       if (doc) {
-        docPath = doc.file_path;
+        const pages = db.prepare(
+          `SELECT file_path FROM document_pages WHERE document_id = ? ORDER BY page_number ASC`
+        ).all(document_id);
+        docPaths = pages.length > 0 ? pages.map((page) => page.file_path) : [doc.file_path];
         docTitle = doc.filename.replace(/\.[^/.]+$/, '');
       } else {
-        const note = db.prepare(
+        const notes = db.prepare(
           `SELECT n.* FROM notes n
            JOIN sessions s ON s.id = n.session_id
            WHERE n.session_id = ? AND s.user_id = ?`
-        ).get(document_id, req.user.id);
-        if (note) {
-          docPath = note.image_path;
-          docTitle = note.subject_title || 'Uploaded Notes';
+        ).all(document_id, req.user.id);
+        if (notes.length > 0) {
+          docPaths = notes.map((note) => note.image_path);
+          docTitle = notes[0].subject_title || 'Uploaded Notes';
         } else {
           return res.status(404).json({
             success: false,
@@ -130,7 +148,7 @@ async function generateKnowledge(req, res) {
       }
     }
 
-    const jobId = `job_${uuidv4().substring(0, 12)}`;
+    jobId = `job_${uuidv4().substring(0, 12)}`;
 
     db.prepare(
       `INSERT INTO generation_jobs (id, user_id, document_id, mode, status)
@@ -139,23 +157,12 @@ async function generateKnowledge(req, res) {
 
     // Run synthesis
     let rawGraph = null;
-    if (docPath && fs.existsSync(docPath)) {
-      try {
-        rawGraph = await generateConceptGraph(docPath);
-      } catch (err) {
-        console.warn('[ingestionController] AI service generation warning:', err.message);
+    if (document_id !== 'sample_chemistry') {
+      const missingFile = docPaths.find((filePath) => !fs.existsSync(filePath));
+      if (missingFile) {
+        throw new Error(`An uploaded note page is missing: ${path.basename(missingFile)}`);
       }
-    }
-
-    // Check for readable text content in uploaded file if applicable
-    let fileContent = '';
-    if (docPath && fs.existsSync(docPath)) {
-      const ext = path.extname(docPath).toLowerCase();
-      if (['.txt', '.md', '.json', '.csv', '.py', '.js', '.html'].includes(ext)) {
-        try {
-          fileContent = fs.readFileSync(docPath, 'utf8').substring(0, 3000);
-        } catch (_) {}
-      }
+      rawGraph = await generateConceptGraph(docPaths);
     }
 
     // Provide default fallback graph data if AI backend is offline or mock
@@ -252,154 +259,7 @@ async function generateKnowledge(req, res) {
           ]
         };
       } else {
-        // Dynamic synthesis based on actual uploaded document name and content
-        const cleanName = (docTitle || 'Uploaded Notes').replace(/[_-]+/g, ' ').trim();
-        const lower = cleanName.toLowerCase();
-        
-        if (lower.includes('bio') || lower.includes('cell') || lower.includes('gene') || lower.includes('organ') || lower.includes('life')) {
-          rawGraph = {
-            subject_title: `${cleanName} (Living Systems)`,
-            raw_transcription: fileContent || `[SYNTHESIS COMPLETE] Neural analysis extracted core biological mechanisms from "${cleanName}". Analysis identifies cellular membrane architecture, metabolic ATP synthesis, and chromosomal division cascades with high structural fidelity.`,
-            key_takeaways: [
-              "Cellular membranes maintain active electrochemical homeostasis via selective transport.",
-              "Mitochondrial phosphorylation provides the high-energy ATP powering metabolic cascades.",
-              "Gene expression couples nuclear transcription with ribosomal protein synthesis."
-            ],
-            worldTheme: "bio_sanctum",
-            zones: [
-              { id: "z_membrane", name: "Membrane Gateway", description: "Perimeter gate regulating selective ionic transport" },
-              { id: "z_mitochondria", name: "Mitochondrial Core", description: "Power generation reactor driving metabolic output" },
-              { id: "z_nucleus", name: "Nuclear Codex", description: "Central archive containing chromosomal chromatin blueprints" }
-            ],
-            nodes: [
-              { node_id: "membrane_transport", title: "Cellular Membrane & Transport", explanation: "Selective permeability and phospholipid bilayer dynamics governing active and passive ionic equilibrium.", importance: "primary", suggested_cluster: "Cellular Architecture", recallPrompt: "Which biochemical structure regulates selective permeability in cellular membranes?" },
-              { node_id: "atp_synthesis", title: "Metabolic ATP Synthesis", explanation: "Mitochondrial oxidative phosphorylation producing high-yield chemical energy currency.", importance: "primary", suggested_cluster: "Bioenergetics", recallPrompt: "What is the primary cellular powerhouse responsible for aerobic ATP production?" },
-              { node_id: "ribosomal_translation", title: "Ribosomal Protein Translation", explanation: "mRNA decoding at ribosomal complexes to synthesize functional polypeptide enzymes.", importance: "secondary", suggested_cluster: "Molecular Genetics", recallPrompt: "Where in the cell does mRNA translation into polypeptide chains occur?" },
-              { node_id: "chromatin_regulation", title: "Nuclear Chromatin Organization", explanation: "Genomic DNA packaging around histone proteins controlling gene accessibility.", importance: "secondary", suggested_cluster: "Genetics", recallPrompt: "What structural proteins condense genomic DNA into nucleosomes?" },
-              { node_id: "enzyme_catalysis", title: "Enzyme Catalytic Kinetics", explanation: "Lowering activation energy barriers to accelerate vital intracellular metabolic reactions.", importance: "tertiary", suggested_cluster: "Biochemistry", recallPrompt: "How do enzymes increase the reaction rate of metabolic pathways?" }
-            ],
-            edges: [
-              { source_id: "membrane_transport", target_id: "atp_synthesis", relationship_type: "energized by" },
-              { source_id: "ribosomal_translation", target_id: "enzyme_catalysis", relationship_type: "synthesizes" },
-              { source_id: "chromatin_regulation", target_id: "ribosomal_translation", relationship_type: "encodes template for" }
-            ],
-            questions: [
-              {
-                question_id: "qb_1",
-                linked_node_id: "atp_synthesis",
-                question_text: "Which organelle serves as the primary site of oxidative phosphorylation and aerobic ATP synthesis?",
-                options: [
-                  { id: "A", text: "Ribosome" },
-                  { id: "B", text: "Mitochondrion" },
-                  { id: "C", text: "Golgi Apparatus" },
-                  { id: "D", text: "Centriole" }
-                ],
-                correct_option_id: "B",
-                explanation: "Mitochondria contain the electron transport chain and ATP synthase complexes required for oxidative phosphorylation."
-              },
-              {
-                question_id: "qb_2",
-                linked_node_id: "enzyme_catalysis",
-                question_text: "How do catalytic enzymes accelerate biochemical reactions within cells?",
-                options: [
-                  { id: "A", text: "By lowering activation energy barriers" },
-                  { id: "B", text: "By increasing substrate temperature" },
-                  { id: "C", text: "By changing the reaction equilibrium constant" },
-                  { id: "D", text: "By consuming ATP continuously" }
-                ],
-                correct_option_id: "A",
-                explanation: "Enzymes stabilize transition states, lowering the activation energy needed for biological reactions."
-              }
-            ]
-          };
-        } else if (lower.includes('physic') || lower.includes('quantum') || lower.includes('gravity') || lower.includes('force') || lower.includes('motion')) {
-          rawGraph = {
-            subject_title: `${cleanName} (Quantum & Kinematics)`,
-            raw_transcription: fileContent || `[SYNTHESIS COMPLETE] Physics vector synthesis of "${cleanName}" mapped 5 fundamental principles and 3 conservation laws. Extracted principles encompass kinematic motion, energetic transformations, and force interactions.`,
-            key_takeaways: [
-              "Mechanical systems strictly conserve total energy and linear momentum across closed boundaries.",
-              "Gravitational and electromagnetic fields propagate forces governing physical trajectories.",
-              "Microscopic quantum wavefunctions determine macroscopic thermodynamic observables."
-            ],
-            worldTheme: "quantum_grid",
-            zones: [
-              { id: "z_kinematics", name: "Kinematic Accelerator", description: "High-velocity chamber testing trajectory vectors" },
-              { id: "z_gravity", name: "Gravitational Well", description: "Mass-curve spatial platform demonstrating field curvature" },
-              { id: "z_quantum", name: "Quantum Matrix Chamber", description: "Probabilistic node matrix testing wave interference" }
-            ],
-            nodes: [
-              { node_id: "kinematic_vectors", title: "Kinematic Vector Mechanics", explanation: "Position, velocity, and acceleration vectors governing trajectory equations under constant and variable force fields.", importance: "primary", suggested_cluster: "Classical Mechanics", recallPrompt: "What is the time derivative of linear velocity in kinematic equations?" },
-              { node_id: "conservation_laws", title: "Conservation of Energy & Momentum", explanation: "Invariant physical quantities in isolated systems during elastic and inelastic interactions.", importance: "primary", suggested_cluster: "Conservation Principles", recallPrompt: "Under what condition is the total linear momentum of a multi-body system conserved?" },
-              { node_id: "field_dynamics", title: "Gravitational & Force Fields", explanation: "Inverse-square law attraction and field potential gradients governing body dynamics.", importance: "secondary", suggested_cluster: "Field Theory", recallPrompt: "How does gravitational force scale with the radial distance between two masses?" },
-              { node_id: "wave_particle", title: "Wave-Particle Duality", explanation: "Quantum state vectors and interference phenomena across probabilistic wavefunctions.", importance: "secondary", suggested_cluster: "Quantum Mechanics", recallPrompt: "What de Broglie relation connects particle momentum to its quantum wavelength?" },
-              { node_id: "thermo_entropy", title: "Thermodynamic Entropy", explanation: "Statistical distribution of microscopic states and direction of spontaneous thermal dissipation.", importance: "tertiary", suggested_cluster: "Thermodynamics", recallPrompt: "What does the Second Law of Thermodynamics state about entropy in isolated systems?" }
-            ],
-            edges: [
-              { source_id: "kinematic_vectors", target_id: "conservation_laws", relationship_type: "governed by" },
-              { source_id: "field_dynamics", target_id: "kinematic_vectors", relationship_type: "accelerates" },
-              { source_id: "wave_particle", target_id: "thermo_entropy", relationship_type: "underpins microstates of" }
-            ],
-            questions: [
-              {
-                question_id: "qp_1",
-                linked_node_id: "conservation_laws",
-                question_text: "Under what physical condition is total linear momentum strictly conserved in a system?",
-                options: [
-                  { id: "A", text: "When external net force equals zero" },
-                  { id: "B", text: "Only in vacuum environments" },
-                  { id: "C", text: "Only when kinetic energy is constant" },
-                  { id: "D", text: "When temperature is absolute zero" }
-                ],
-                correct_option_id: "A",
-                explanation: "According to Newton's Second Law, dp/dt = F_net; when external net force is zero, momentum remains invariant."
-              }
-            ]
-          };
-        } else {
-          // General uploaded document
-          rawGraph = {
-            subject_title: `${cleanName} (Notes Synthesis)`,
-            raw_transcription: fileContent || `[SYNTHESIS COMPLETE] Syntropy neural engine parsed 5 foundational concept nodes and 3 structural relational vectors from "${cleanName}". Ingested material establishes core definitions, procedural mechanisms, and active recall benchmarks.`,
-            key_takeaways: [
-              `Source document "${cleanName}" presents structured conceptual hierarchy and operational workflows.`,
-              "Core definitions establish prerequisite knowledge required for downstream analytical conclusions.",
-              "Empirical observations and logical models validate the central thesis across all sections."
-            ],
-            worldTheme: "syntropy_nexus",
-            zones: [
-              { id: "z_archive", name: "Codex Ingestion Gateway", description: "Intake platform parsing structured notes and document syntax" },
-              { id: "z_nexus", name: "Concept Convergence Matrix", description: "Central processing node linking core definitions to operational vectors" },
-              { id: "z_proving", name: "Proving Grounds", description: "Active recall proving zone validating mastered principles" }
-            ],
-            nodes: [
-              { node_id: "core_foundations", title: `${cleanName}: Core Definitions`, explanation: `Fundamental principles and foundational definitions outlined in the source document "${cleanName}".`, importance: "primary", suggested_cluster: "Foundations", recallPrompt: `What is the foundational premise established in ${cleanName}?` },
-              { node_id: "procedural_methods", title: "Procedural Mechanisms & Workflow", explanation: "Step-by-step methodologies and systemic operational sequences detailed in the material.", importance: "primary", suggested_cluster: "Methodology", recallPrompt: "Describe the primary operational steps outlined in the procedural sections." },
-              { node_id: "structural_interactions", title: "Relational Dynamics & Interactions", explanation: "Direct relationships and causal dependencies linking input conditions to observable outputs.", importance: "secondary", suggested_cluster: "Interactions", recallPrompt: "How do the core components interact to produce the expected outcomes?" },
-              { node_id: "empirical_evidence", title: "Quantitative Metrics & Evidence", explanation: "Data benchmarks, experimental metrics, and analytical proofs supporting the core thesis.", importance: "secondary", suggested_cluster: "Analysis", recallPrompt: "What key metrics or evidentiary observations support the author's primary claims?" },
-              { node_id: "applied_synthesis", title: "Practical Application & Synthesis", explanation: "Real-world implementation vectors, optimization strategies, and summary conclusions.", importance: "tertiary", suggested_cluster: "Applications", recallPrompt: "In what practical scenarios can these principles be applied effectively?" }
-            ],
-            edges: [
-              { source_id: "core_foundations", target_id: "procedural_methods", relationship_type: "guides implementation of" },
-              { source_id: "procedural_methods", target_id: "structural_interactions", relationship_type: "generates" },
-              { source_id: "empirical_evidence", target_id: "applied_synthesis", relationship_type: "validates" }
-            ],
-            questions: [
-              {
-                question_id: "qg_doc1",
-                linked_node_id: "core_foundations",
-                question_text: `What is the central objective and core foundation articulated in ${cleanName}?`,
-                options: [
-                  { id: "A", text: "Establishing theoretical foundations and rigorous operational workflows" },
-                  { id: "B", text: "Disproving established mathematical axioms" },
-                  { id: "C", text: "Replacing structured analysis with randomized heuristics" },
-                  { id: "D", text: "Archiving deprecated legacy documentation" }
-                ],
-                correct_option_id: "A",
-                explanation: "The document establishes clear fundamental principles and rigorous procedural workflows to solve domain-specific problems."
-              }
-            ]
-          };
-        }
+        throw new Error('The AI service did not return any concepts for this document.');
       }
     }
 
@@ -502,7 +362,16 @@ async function generateKnowledge(req, res) {
     });
   } catch (err) {
     console.error('[ingestionController] generateKnowledge error:', err);
-    return res.status(500).json({
+    if (jobId) {
+      try {
+        db.prepare(
+          `UPDATE generation_jobs SET status = 'failed', error = ?, completed_at = datetime('now') WHERE id = ?`
+        ).run(err.message || 'AI generation failed.', jobId);
+      } catch (statusErr) {
+        console.error('[ingestionController] failed to update job status:', statusErr.message);
+      }
+    }
+    return res.status(502).json({
       success: false,
       error: err.message || 'Failed to generate knowledge structure.'
     });

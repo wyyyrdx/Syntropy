@@ -67,15 +67,13 @@ def transcribe_handwriting(image_path: str) -> str:
     client = genai.Client(api_key=api_key)
     image = Image.open(image_path).convert("RGB")
 
-    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     models_to_try = list(dict.fromkeys([
         preferred_model,
-        "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-flash-latest",
-        "gemini-3.8-flash",
-        "gemini-3.7-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
     ]))
 
     last_error = None

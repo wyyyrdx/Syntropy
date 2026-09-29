@@ -1013,6 +1013,11 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
 
   // ── Direct 2D Realm launcher from upload terminal ──
   const handleLaunchDirectRealm = useCallback(() => {
+    if (!generationResult && file && !file.isSample) {
+      setSelectedTarget('rpg');
+      setErrorMessage('Generate the world from your uploaded notes before entering it.');
+      return;
+    }
     try { retroAudio?.playWarp?.(); } catch {}
     setSelectedTarget('rpg');
     if (!generationResult) {
@@ -1181,11 +1186,8 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
       })
     );
 
-    let updatedFiles = [];
-    setFiles(prev => {
-      updatedFiles = [...prev, ...newItems];
-      return updatedFiles;
-    });
+    const updatedFiles = [...files, ...newItems];
+    setFiles(updatedFiles);
     setActivePreviewIdx(prev => Math.max(0, updatedFiles.length - newItems.length));
 
     try {
@@ -1196,8 +1198,8 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
         retroAudio.playMechanicalLatch?.();
       }
     } catch (err) {
-      console.warn('Upload fallback active:', err.message);
-      setDocumentId(`local_${Date.now()}`);
+      setDocumentId(null);
+      setErrorMessage(err.message || 'Upload failed. Check the backend connection and try again.');
     } finally {
       setIsUploading(false);
     }
@@ -1258,7 +1260,7 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
     setGenerationResult(null);
   };
 
-  // ── ANALYSE — hits real backend then uses dynamic synthesis ──
+  // ── ANALYSE ──
   const handleAnalyse = async () => {
     if (files.length === 0 && !documentId) return;
 
@@ -1273,69 +1275,20 @@ export default function Dashboard({ onNavigateSpace, onEnterRealm, playerStats, 
       await new Promise((r) => setTimeout(r, 500));
       setProcessingStep(2);
 
-      const targetDocId = documentId || 'sample_chemistry';
+      const targetDocId = documentId || (file?.isSample ? 'sample_chemistry' : null);
       const isSampleData = file?.isSample || targetDocId === 'sample_chemistry';
       let data = null;
 
       if (!isSampleData && file) {
-        // ── USER UPLOADED A CUSTOM FILE ──
-        try {
-          const res = await api.generateKnowledge(targetDocId, selectedTarget);
-          if (res?.result && (res.result.nodes?.length > 0 || res.result.concepts?.length > 0)) {
-            data = res.result;
-          }
-        } catch (err) {
-          console.warn('Backend generation notice:', err.message);
+        if (!targetDocId) {
+          throw new Error('Your notes were not uploaded. Check the backend connection, then select the files again.');
         }
 
-        // Dynamically synthesize from uploaded file attributes & content
-        if (!data) {
-          const baseData = generateUploadedSynthesis(file, fileTextContent);
-          if (selectedTarget === 'explanation') {
-            data = {
-              title: baseData.subject_title,
-              summary: baseData.raw_transcription,
-              concepts: baseData.nodes.map((n) => ({
-                id: n.node_id,
-                name: n.title,
-                definition: n.explanation,
-                importance: n.importance,
-                cluster: n.suggested_cluster,
-                recall_prompt: n.recallPrompt,
-              })),
-              relationships: baseData.edges.map((e) => ({
-                from: e.source_id,
-                to: e.target_id,
-                type: e.relationship_type,
-              })),
-              key_takeaways: baseData.key_takeaways,
-              questions: baseData.questions,
-              nodes: baseData.nodes,
-            };
-          } else if (selectedTarget === 'rpg') {
-            data = {
-              world: {
-                name: baseData.subject_title,
-                theme: baseData.worldTheme,
-                background: 'concept_matrix',
-              },
-              zones: baseData.zones,
-              quests: baseData.nodes.map((n, i) => ({
-                quest_id: `q_${i + 1}`,
-                title: `Master: ${n.title}`,
-                description: n.explanation,
-                target_node: n.node_id,
-                xp: 50,
-                linked_question: baseData.questions.find((q) => q.linked_node_id === n.node_id) || null,
-              })),
-              questions: baseData.questions,
-              nodes: baseData.nodes,
-            };
-          } else {
-            // graph mode
-            data = baseData;
-          }
+        const res = await api.generateKnowledge(targetDocId, selectedTarget);
+        if (!res?.result || (!res.result.nodes?.length && !res.result.concepts?.length)) {
+          throw new Error('The AI service returned no concepts for these notes. Try a clearer image or PDF.');
         }
+        data = res.result;
       } else {
         // ── USER LOADED THE CHEMISTRY SAMPLE ──
         try {
