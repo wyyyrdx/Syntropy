@@ -335,12 +335,12 @@ export default function App() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => handleSwitchSpace('profile')}
-            className={`hidden sm:flex items-center gap-2 border px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
+            className={`hidden sm:flex items-center gap-2 border px-2.5 py-1.5 rounded font-mono font-bold text-xs tracking-wider transition-colors cursor-pointer ${
               activeSpace === 'profile'
                 ? 'border-cyan-500 bg-cyan-950/30 text-cyan-200'
                 : 'border-[#1a2942] bg-[#0b1325] text-slate-300 hover:border-cyan-700'
             }`}
-            style={{ maxWidth: '190px' }}
+            style={{ maxWidth: '190px', fontSize: '13px' }}
             title="Open profile"
           >
             <User className="w-3.5 h-3.5 shrink-0" />
@@ -443,12 +443,12 @@ export default function App() {
                 activeSpace === 'profile'
                   ? 'bg-cyan-950/30 border border-cyan-500/70 text-cyan-100 font-bold'
                   : 'hover:bg-[#0c1428] border border-transparent hover:border-[#1e2f4d] text-slate-300 hover:text-cyan-200 font-bold'
-              }`}
-              style={{ fontSize: '14px' }}
+              } font-mono`}
+              style={{ fontSize: '15px', letterSpacing: '0.1em' }}
             >
               <div className="flex items-center gap-2.5">
                 <User className="w-4 h-4 text-cyan-300" />
-                <span>Profile</span>
+                <span className="tracking-wide">PROFILE</span>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>

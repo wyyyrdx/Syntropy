@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { retroAudio } from '../audio/retroAudio';
 import confetti from 'canvas-confetti';
+import {
+  detectDiagramDomain,
+  getAccurateConceptStages,
+  drawAccurateConceptSchematic
+} from './accurateDiagramEngine';
 
 /* ─────────────────────────────────────────────────────────────
    CANVAS WORLD CONSTANTS & HELPERS
@@ -226,58 +231,7 @@ function drawIon(ctx, x, y, label, color) {
   ctx.textBaseline = 'alphabetic';
 }
 
-function detectDiagramDomain(node, data) {
-  const text = `${node?.title || ''} ${node?.explanation || ''} ${node?.cluster || ''} ${data?.subject_title || ''} ${data?.raw_transcription || ''} ${data?.summary || ''}`.toLowerCase();
-
-  // 1. Chemistry / Organic Chemistry / Reactions
-  if (
-    text.includes('alkene') || text.includes('alcohol') || text.includes('acid') ||
-    text.includes('dehydration') || text.includes('carbocation') || text.includes('bromine') ||
-    text.includes('saytzeff') || text.includes('zaitsev') || text.includes('catalyst') ||
-    text.includes('proton') || text.includes('oxonium') || text.includes('ester') ||
-    text.includes('addition') || text.includes('elimination') || text.includes('lewis') ||
-    text.includes('organic chemistry') || text.includes('unsaturation') || text.includes('reaction')
-  ) {
-    return 'chemistry';
-  }
-
-  // 2. Data Engineering / Entity Resolution / ML / Databases
-  if (
-    text.includes('entity') || text.includes('resolution') || text.includes('blocking') ||
-    text.includes('jaccard') || text.includes('jaro') || text.includes('tsv') ||
-    text.includes('csv') || text.includes('record') || text.includes('deduplicat') ||
-    text.includes('golden') || text.includes('classifier') || text.includes('pairwise') ||
-    text.includes('clustering') || text.includes('similarity') || text.includes('database') ||
-    text.includes('pipeline') || text.includes('hash') || text.includes('token')
-  ) {
-    return 'data_pipeline';
-  }
-
-  // 3. Biology / Cellular Physiology / Neuroscience
-  if (
-    text.includes('membrane') || text.includes('phospholipid') || text.includes('bilayer') ||
-    text.includes('cell') || text.includes('neuron') || text.includes('action potential') ||
-    text.includes('atp') || text.includes('mitochondria') || text.includes('ion channel') ||
-    text.includes('sodium') || text.includes('potassium') || text.includes('depolariz') ||
-    text.includes('dna') || text.includes('rna') || text.includes('synapse') ||
-    text.includes('biology') || text.includes('enzyme')
-  ) {
-    return 'biology';
-  }
-
-  // 4. Physics / Quantum / Electromagnetism / Atoms
-  if (
-    text.includes('atom') || text.includes('bohr') || text.includes('orbital') ||
-    text.includes('photon') || text.includes('quantum') || text.includes('electron') ||
-    text.includes('emission') || text.includes('spectral') || text.includes('spectrum') ||
-    text.includes('energy level') || text.includes('rydberg') || text.includes('electromagnet') ||
-    text.includes('physics') || text.includes('optics') || text.includes('wavelength')
-  ) {
-    return 'physics';
-  }
-
-  return 'system';
-}
+// Note: detectDiagramDomain, getAccurateConceptStages & drawAccurateConceptSchematic are imported from accurateDiagramEngine
 
 function getDomainStages(domain, node, data) {
   const title = String(node?.title || 'Concept');
@@ -1607,9 +1561,25 @@ export default function Explanation2DWorld({
     return detectDiagramDomain(selectedNode, data);
   }, [selectedNode, data]);
 
+  const incomingEdges = useMemo(() => {
+    if (!selectedNode?.id) return [];
+    return edges.filter(e => e.target?.id === selectedNode.id || e.target_id === selectedNode.id || e.to === selectedNode.id);
+  }, [edges, selectedNode]);
+
+  const outgoingEdges = useMemo(() => {
+    if (!selectedNode?.id) return [];
+    return edges.filter(e => e.source?.id === selectedNode.id || e.source_id === selectedNode.id || e.from === selectedNode.id);
+  }, [edges, selectedNode]);
+
+  const linkedQuestion = useMemo(() => {
+    if (!selectedNode?.id) return null;
+    const qs = Array.isArray(data?.questions) ? data.questions : [];
+    return qs.find(q => q.linked_node_id === selectedNode.id || q.linked_node_id === selectedNode.node_id) || qs[0] || null;
+  }, [data, selectedNode]);
+
   const domainStages = useMemo(() => {
-    return getDomainStages(diagramDomain, selectedNode, data);
-  }, [diagramDomain, selectedNode, data]);
+    return getAccurateConceptStages(diagramDomain, selectedNode, data, edges, nodes);
+  }, [diagramDomain, selectedNode, data, edges, nodes]);
 
   /* ─────────────────────────────────────────────────────────────
      CANVAS INTERACTION: PAN, ZOOM, DRAG & CLICK
@@ -2244,18 +2214,23 @@ export default function Explanation2DWorld({
         ctx.fillText(`LIVE SCHEMATIC`, W - 52, 40);
         ctx.restore();
 
-        // Dispatch to domain-specific scientific / technical diagrams
-        if (domain === 'chemistry') {
-          drawChemistryDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
-        } else if (domain === 'data_pipeline') {
-          drawDataPipelineDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
-        } else if (domain === 'biology') {
-          drawBiologyDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
-        } else if (domain === 'physics') {
-          drawPhysicsDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
-        } else {
-          drawSystemDiagram(ctx, W, H, localTick, diagramStep, selectedNode, data, themeCol);
-        }
+        // Dispatch to dynamic, scientifically accurate concept schematic engine
+        drawAccurateConceptSchematic(
+          ctx,
+          W,
+          H,
+          localTick,
+          diagramStep,
+          selectedNode,
+          data,
+          themeCol,
+          domain,
+          curStageObj,
+          domainStages,
+          incomingEdges,
+          outgoingEdges,
+          linkedQuestion
+        );
 
         // Bottom Banner with Dynamic Domain Stage & Explanation
         ctx.save();
@@ -2304,7 +2279,7 @@ export default function Explanation2DWorld({
       running = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [activeTab, selectedNode, diagramStep, isSimulating, simulationSpeed, diagramDomain, domainStages, data]);
+  }, [activeTab, selectedNode, diagramStep, isSimulating, simulationSpeed, diagramDomain, domainStages, incomingEdges, outgoingEdges, linkedQuestion, data]);
 
   /* ─────────────────────────────────────────────────────────────
      JSX RETURN: 2D DIAGRAM EXPLANATION
